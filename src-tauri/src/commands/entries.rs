@@ -209,6 +209,27 @@ mod tests {
     }
 
     #[test]
+    fn test_start_entry_with_project_id() {
+        use crate::commands::projects::create_project_impl;
+
+        let db = setup_db();
+        let project = create_project_impl(&db, "TestProj").unwrap();
+        let entry = start_entry_impl(&db, "Task with project", None, Some(project.id)).unwrap();
+        assert_eq!(entry.project_id, Some(project.id));
+
+        let active = get_active_entry_impl(&db).unwrap().unwrap();
+        assert_eq!(active.project_id, Some(project.id));
+        assert_eq!(active.title, "Task with project");
+    }
+
+    #[test]
+    fn test_start_entry_without_project_id() {
+        let db = setup_db();
+        let entry = start_entry_impl(&db, "Task without project", None, None).unwrap();
+        assert!(entry.project_id.is_none());
+    }
+
+    #[test]
     fn test_stop_entry_sets_end_time() {
         let db = setup_db();
         start_entry_impl(&db, "Task", None, None).unwrap();

@@ -239,6 +239,7 @@ pub fn FullAppWindow() -> Element {
                         for entry in filtered_entries.read().iter() {
                             EntryRow {
                                 entry: entry.clone(),
+                                projects: projects_sig.read().clone(),
                                 on_delete: on_delete_entry,
                             }
                         }

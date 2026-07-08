@@ -80,4 +80,22 @@ mod tests {
         assert!(content.contains("| Date | Hour Span |"));
         let _ = fs::remove_file(tmp);
     }
+
+    #[test]
+    fn test_export_with_project() {
+        use crate::commands::projects::create_project_impl;
+
+        let db = setup_db();
+        let project = create_project_impl(&db, "MyProject").unwrap();
+        start_entry_impl(&db, "Task with project", None, Some(project.id)).unwrap();
+        stop_entry_impl(&db).unwrap();
+
+        let tmp = std::env::temp_dir().join("hours_export_project_test.md");
+        let path = tmp.to_str().unwrap();
+        export_markdown_impl(&db, path).unwrap();
+
+        let content = fs::read_to_string(path).unwrap();
+        assert!(content.contains("MyProject"));
+        let _ = fs::remove_file(tmp);
+    }
 }
