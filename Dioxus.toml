@@ -10,6 +10,8 @@ title = "Hours"
 [web.resource]
 style = ["assets/styles.css"]
 
+[web.resource.dev]
+
 [web.watcher]
 reload_html = true
 watch_path = ["src", "assets"]
