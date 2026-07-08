@@ -2,13 +2,17 @@ name: Build
 
 on:
   push:
-    branches: [main, feature/hours-timer-app]
+    branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 jobs:
   build:
+    permissions:
+      contents: write
+
     runs-on: ubuntu-22.04
 
     steps:
@@ -36,14 +40,25 @@ jobs:
       - name: Install Dioxus CLI
         run: cargo install dioxus-cli --version "^0.7"
 
-      - name: Build frontend (WASM)
-        run: dx bundle --release
-
-      - name: Build Tauri binary
-        run: cargo tauri build --bundles ""
-
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: hours-linux-x86_64
-          path: src-tauri/target/release/hours
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v0.1.0-{0}', github.run_number) }}
+          releaseName: "hours ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v0.1.0-{0}', github.run_number) }}"
+          releaseBody: "See assets to download."
+          releaseDraft: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          prerelease: false
+          uploadWorkflowArtifacts: true
+          workflowArtifactNamePattern: "hours-[version]-linux-x86_64"
+
+      - name: Upload raw binary to release
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v0.1.0-{0}', github.run_number) }}"
+          gh release upload "$TAG" \
+            src-tauri/target/release/hours \
+            --clobber
