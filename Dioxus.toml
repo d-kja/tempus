@@ -7,6 +7,9 @@ asset_dir = "assets"
 [web.app]
 title = "Hours"
 
+[web.resource]
+style = ["assets/styles.css"]
+
 [web.watcher]
 reload_html = true
 watch_path = ["src", "assets"]
