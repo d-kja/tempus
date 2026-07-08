@@ -127,7 +127,18 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 .btn-outline:hover { background: var(--surface-2); }
 
 /* ---- Expanded view ---- */
-.expanded { height: 100%; display: flex; flex-direction: column; user-select: none; }
+.expanded {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  background: var(--bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+}
 .expanded-header {
   display: flex;
   align-items: center;
