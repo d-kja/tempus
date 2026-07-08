@@ -16,6 +16,25 @@ pub fn NewEntryWindow() -> Element {
         });
     });
 
+    let do_start = move || {
+        let t = title.read().clone();
+        let pid = *selected_project.read();
+        web_sys::console::log_1(&wasm_bindgen::JsValue::from(format!("start: title={}, pid={:?}", t, pid)));
+        spawn(async move {
+            let result = bridge::start_entry(t, None, pid).await;
+            match &result {
+                Ok(entry) => web_sys::console::log_1(&wasm_bindgen::JsValue::from(
+                    format!("entry created: id={}, project_id={:?}", entry.id, entry.project_id),
+                )),
+                Err(e) => web_sys::console::log_1(&wasm_bindgen::JsValue::from(
+                    format!("start error: {}", e),
+                )),
+            }
+            let _ = result;
+            let _ = bridge::close_current_window().await;
+        });
+    };
+
     rsx! {
         document::Link { rel: "stylesheet", href: asset!("/assets/app.css") }
         div { class: "new-entry",
@@ -27,12 +46,7 @@ pub fn NewEntryWindow() -> Element {
                 oninput: move |e| title.set(e.value()),
                 onkeydown: move |e| {
                     if e.key() == Key::Enter {
-                        let t = title.read().clone();
-                        let pid = *selected_project.read();
-                        spawn(async move {
-                            let _ = bridge::start_entry(t, None, pid).await;
-                            let _ = bridge::close_current_window().await;
-                        });
+                        do_start();
                     }
                 }
             }
@@ -66,14 +80,7 @@ pub fn NewEntryWindow() -> Element {
                 }
                 button {
                     class: "btn btn-primary",
-                    onclick: move |_| {
-                        let t = title.read().clone();
-                        let pid = *selected_project.read();
-                        spawn(async move {
-                            let _ = bridge::start_entry(t, None, pid).await;
-                            let _ = bridge::close_current_window().await;
-                        });
-                    },
+                    onclick: move |_| do_start(),
                     "Start"
                 }
             }
