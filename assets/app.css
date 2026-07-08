@@ -136,6 +136,7 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   border-bottom: 1px solid var(--border-soft);
 }
 .expanded-header-left { display: flex; align-items: center; gap: 8px; }
+.expanded-header-right { display: flex; align-items: center; gap: 8px; }
 .expanded-title { font-size: 14px; font-weight: 500; color: var(--text); }
 .collapse-btn {
   font-size: 12px;

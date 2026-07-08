@@ -126,10 +126,21 @@ pub fn ExpandedView() -> Element {
                     }
                     h2 { class: "expanded-title", "Hours" }
                 }
-                button {
-                    class: "collapse-btn",
-                    onclick: on_minimize,
-                    "\u{2193} Collapse"
+                div { class: "expanded-header-right",
+                    button {
+                        class: "icon-btn",
+                        onclick: move |_| {
+                            spawn(async move {
+                                let _ = bridge::open_settings().await;
+                            });
+                        },
+                        "\u{2699}"
+                    }
+                    button {
+                        class: "collapse-btn",
+                        onclick: on_minimize,
+                        "\u{2193}"
+                    }
                 }
             }
 
