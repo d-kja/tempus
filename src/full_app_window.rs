@@ -11,7 +11,7 @@ static CSS: Asset = asset!("/assets/app.css");
 
 #[component]
 pub fn FullAppWindow() -> Element {
-    let mut page = use_signal(|| Page::Timer);
+    let page = use_signal(|| Page::Timer);
     let mut elapsed = use_signal(|| 0u64);
     let mut entries_sig = use_signal(Vec::new);
     let mut projects_sig = use_signal(Vec::new);
@@ -22,7 +22,14 @@ pub fn FullAppWindow() -> Element {
     let mut status = use_signal(String::new);
     let mut filter_project = use_signal(|| None::<i64>);
     let mut interval_handle = use_signal(|| Option::<Interval>::None);
+    let mut clear_confirm = use_signal(|| false);
     let is_running = use_memo(move || matches!(*timer_state.read(), TimerState::Running(_)));
+
+    use_effect(move || {
+        bridge::listen_entry_started(move |entry| {
+            timer_state.set(TimerState::Running(entry));
+        });
+    });
 
     use_effect(move || {
         wasm_bindgen_futures::spawn_local(async move {
@@ -61,6 +68,15 @@ pub fn FullAppWindow() -> Element {
             *interval_handle.write() = None;
         }
     });
+
+    let on_delete_entry = move |id: i64| {
+        spawn(async move {
+            let _ = bridge::delete_entry(id).await;
+            if let Ok(e) = bridge::get_entries(Some(50), None).await {
+                entries_sig.set(e);
+            }
+        });
+    };
 
     let on_close = move |_| {
         spawn(async move {
@@ -181,12 +197,45 @@ pub fn FullAppWindow() -> Element {
                         }
                     }
                     div { class: "entries",
-                        h3 { class: "entries-header", "Recent entries" }
+                        div { class: "entries-header-row",
+                            h3 { class: "entries-header", "Recent entries" }
+                            button {
+                                class: "btn-icon btn-icon-danger",
+                                onclick: move |_| clear_confirm.set(true),
+                                "\u{1F5D1}"
+                            }
+                        }
+                        if *clear_confirm.read() {
+                            div { class: "confirm-clear",
+                                span { "Clear all entries?" }
+                                div { class: "confirm-clear-actions",
+                                    button {
+                                        class: "btn btn-sm btn-danger",
+                                        onclick: move |_| {
+                                            spawn(async move {
+                                                let _ = bridge::clear_all_entries().await;
+                                                entries_sig.set(Vec::new());
+                                                clear_confirm.set(false);
+                                            });
+                                        },
+                                        "Yes, clear"
+                                    }
+                                    button {
+                                        class: "btn btn-sm btn-outline",
+                                        onclick: move |_| clear_confirm.set(false),
+                                        "Cancel"
+                                    }
+                                }
+                            }
+                        }
                         if filtered_entries.read().is_empty() {
                             p { class: "entries-empty", "No entries yet." }
                         }
                         for entry in filtered_entries.read().iter() {
-                            EntryRow { entry: entry.clone() }
+                            EntryRow {
+                                entry: entry.clone(),
+                                on_delete: on_delete_entry,
+                            }
                         }
                     }
                 }
@@ -254,25 +303,6 @@ pub fn FullAppWindow() -> Element {
                                 class: "btn btn-primary",
                                 onclick: on_export,
                                 "Export Markdown"
-                            }
-                        }
-                        div { class: "section-divider" }
-                        section { class: "section",
-                            h3 { class: "section-label", "Danger Zone" }
-                            button {
-                                class: "btn btn-danger",
-                                onclick: move |_| {
-                                    spawn(async move {
-                                        if web_sys::window()
-                                            .and_then(|w| w.confirm_with_message("Delete all entries? This cannot be undone.").ok())
-                                            .unwrap_or(false)
-                                        {
-                                            let _ = bridge::clear_all_entries().await;
-                                            entries_sig.set(Vec::new());
-                                        }
-                                    });
-                                },
-                                "Clear all entries"
                             }
                         }
                         div { class: "page-filler" }

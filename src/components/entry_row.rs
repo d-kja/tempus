@@ -2,7 +2,8 @@ use crate::bridge::Entry;
 use dioxus::prelude::*;
 
 #[component]
-pub fn EntryRow(entry: Entry) -> Element {
+pub fn EntryRow(entry: Entry, on_delete: EventHandler<i64>) -> Element {
+    let eid = entry.id;
     let date_part = &entry.start_time[..10];
     let start_part = &entry.start_time[11..16];
     let end_part = entry
@@ -19,8 +20,15 @@ pub fn EntryRow(entry: Entry) -> Element {
                     "{date_part}  {start_part} \u{2013} {end_part}"
                 }
             }
-            if entry.end_time.is_none() {
-                span { class: "dot dot-on" }
+            div { class: "entry-actions",
+                if entry.end_time.is_none() {
+                    span { class: "dot dot-on" }
+                }
+                button {
+                    class: "entry-delete",
+                    onclick: move |_| on_delete.call(eid),
+                    "\u{00D7}"
+                }
             }
         }
     }

@@ -1,11 +1,19 @@
+use js_sys::Function;
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::closure::Closure;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen::JsCast;
 
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
     async fn invoke(cmd: &str, args: JsValue) -> JsValue;
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"])]
+    fn listen_js(event: &str, handler: &Function) -> JsValue;
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -168,4 +176,23 @@ pub async fn close_current_window() -> Result<(), String> {
     let args = serde_wasm_bindgen::to_value(&()).unwrap();
     let _ = invoke("close_current_window", args).await;
     Ok(())
+}
+
+pub async fn open_new_entry() -> Result<(), String> {
+    let args = serde_wasm_bindgen::to_value(&()).unwrap();
+    let _ = invoke("open_new_entry", args).await;
+    Ok(())
+}
+
+pub fn listen_entry_started(mut callback: impl FnMut(Entry) + 'static) {
+    let handler = Closure::new(move |event: JsValue| {
+        if let Ok(payload) = js_sys::Reflect::get(&event, &JsValue::from_str("payload")) {
+            if let Ok(entry) = from_value::<Entry>(payload) {
+                callback(entry);
+            }
+        }
+    });
+    let func = handler.as_ref().unchecked_ref::<Function>();
+    let _ = listen_js("entry-started", func);
+    handler.forget();
 }

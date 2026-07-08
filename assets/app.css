@@ -314,6 +314,51 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   font-family: ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
+.entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.entry-delete {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-4);
+  padding: 2px 4px;
+  transition: color 0.15s;
+}
+.entry-delete:hover { color: rgb(248, 113, 113); }
+.entries-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 16px;
+}
+.btn-icon {
+  background: none;
+  border: none;
+  font-size: 13px;
+  padding: 4px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.btn-icon-danger { color: var(--text-4); }
+.btn-icon-danger:hover { color: rgb(248, 113, 113); }
+.confirm-clear {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: rgba(239, 68, 68, 0.9);
+  background: rgba(239, 68, 68, 0.08);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+}
+.confirm-clear-actions {
+  display: flex;
+  gap: 6px;
+}
 
 /* ---- Navigation ---- */
 .nav {
@@ -436,12 +481,29 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 }
 .settings-window-close:hover { color: var(--text); }
 .settings-window-body { padding: 16px; }
-.section { margin-bottom: 16px; }
-.section-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0 0 8px 0;
+
+/* ---- New Entry window ---- */
+.new-entry {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 16px 16px;
+  background: var(--bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
 }
+.new-entry-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-align: center;
+}
+.new-entry-actions {
+  display: flex;
+  gap: 8px;
+}
+.new-entry-actions .btn { flex: 1; }

@@ -5,16 +5,19 @@ mod models;
 use crate::commands::{entries, projects, settings, export as export_mod};
 use db::Database;
 use std::collections::HashMap;
-use tauri::{Manager, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl};
+use tauri::{Emitter, Manager, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl};
 
 #[tauri::command]
 fn start_entry(
+    app: tauri::AppHandle,
     db: State<Database>,
     title: String,
     description: Option<String>,
     project_id: Option<i64>,
 ) -> Result<crate::models::Entry, String> {
-    entries::start_entry_impl(&db, &title, description.as_deref(), project_id)
+    let entry = entries::start_entry_impl(&db, &title, description.as_deref(), project_id)?;
+    let _ = app.emit("entry-started", &entry);
+    Ok(entry)
 }
 
 #[tauri::command]
@@ -137,6 +140,26 @@ fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn open_new_entry(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(existing) = app.get_webview_window("new-entry") {
+        let _ = existing.show();
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+    WebviewWindowBuilder::new(&app, "new-entry", WebviewUrl::App("/index.html?new-entry".into()))
+        .title("New Entry")
+        .inner_size(320.0, 200.0)
+        .decorations(false)
+        .resizable(false)
+        .transparent(true)
+        .shadow(true)
+        .always_on_top(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn close_current_window(window: WebviewWindow) -> Result<(), String> {
     window.close().map_err(|e| e.to_string())
 }
@@ -211,6 +234,7 @@ pub fn run() {
             set_always_on_top,
             set_window_position,
             open_settings,
+            open_new_entry,
             close_current_window,
         ])
         .run(tauri::generate_context!())

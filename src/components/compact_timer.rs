@@ -6,7 +6,7 @@ use gloo_timers::callback::Interval;
 
 #[component]
 pub fn CompactTimer() -> Element {
-    let mut state = use_context::<AppState>();
+    let state = use_context::<AppState>();
     let mut elapsed = use_signal(|| 0u64);
 
     let mut interval_handle = use_signal(|| Option::<Interval>::None);
@@ -53,14 +53,7 @@ pub fn CompactTimer() -> Element {
                         }
                     }
                     TimerState::Idle => {
-                        let title = web_sys::window()
-                            .and_then(|w| w.prompt_with_message_and_default("What are you working on?", "Untitled").ok())
-                            .flatten()
-                            .filter(|s| !s.trim().is_empty())
-                            .unwrap_or_else(|| "Untitled".to_string());
-                        if let Ok(entry) = bridge::start_entry(title, None, None).await {
-                            state.timer.set(TimerState::Running(entry));
-                        }
+                        let _ = bridge::open_new_entry().await;
                     }
                 }
             });
