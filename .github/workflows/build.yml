@@ -36,10 +36,14 @@ jobs:
       - name: Install Dioxus CLI
         run: cargo install dioxus-cli --version "^0.7"
 
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build frontend (WASM)
+        run: dx bundle --release
+
+      - name: Build Tauri binary
+        run: cargo tauri build --bundles ""
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
         with:
-          uploadWorkflowArtifacts: true
-          workflowArtifactNamePattern: hours-[version]-linux-x86_64
+          name: hours-linux-x86_64
+          path: src-tauri/target/release/hours
