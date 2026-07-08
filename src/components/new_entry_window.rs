@@ -1,5 +1,4 @@
 use crate::bridge;
-use crate::bridge::Project;
 use dioxus::prelude::*;
 
 #[component]

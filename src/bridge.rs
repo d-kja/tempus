@@ -40,12 +40,6 @@ struct GetEntriesArgs {
     offset: Option<i64>,
 }
 
-#[derive(Serialize)]
-struct SetWindowSizeArgs {
-    width: f64,
-    height: f64,
-}
-
 fn from_value<T: for<'de> Deserialize<'de>>(val: JsValue) -> Result<T, String> {
     serde_wasm_bindgen::from_value(val).map_err(|e| format!("deserialize: {}", e))
 }
@@ -69,12 +63,6 @@ pub async fn stop_entry() -> Result<Option<Entry>, String> {
     let args = serde_wasm_bindgen::to_value(&()).unwrap();
     let val = invoke("stop_entry", args).await;
     from_value(val)
-}
-
-pub async fn resume_entry(id: i64) -> Result<Entry, String> {
-    let wrapper = serde_json::json!({ "id": id });
-    let args = serde_wasm_bindgen::to_value(&wrapper).unwrap();
-    from_value(invoke("resume_entry", args).await)
 }
 
 pub async fn get_active_entry() -> Result<Option<Entry>, String> {
@@ -146,13 +134,6 @@ pub async fn export_markdown(path: String) -> Result<(), String> {
 pub async fn pick_export_folder() -> Result<Option<String>, String> {
     let args = serde_wasm_bindgen::to_value(&()).unwrap();
     from_value::<Option<String>>(invoke("pick_export_folder", args).await)
-}
-
-pub async fn set_window_size(width: f64, height: f64) -> Result<(), String> {
-    let args = SetWindowSizeArgs { width, height };
-    let js_args = serde_wasm_bindgen::to_value(&args).map_err(|e| e.to_string())?;
-    let _ = invoke("set_window_size", js_args).await;
-    Ok(())
 }
 
 pub async fn set_always_on_top(always: bool) -> Result<(), String> {

@@ -1,5 +1,4 @@
 use crate::bridge;
-use crate::bridge::Project;
 use crate::components::timer_display::TimerDisplay;
 use crate::state::{AppState, TimerState};
 use dioxus::prelude::*;

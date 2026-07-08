@@ -5,6 +5,7 @@ use dioxus::prelude::*;
 pub enum TimerState {
     Idle,
     Running(Entry),
+    #[allow(dead_code)]
     Stopped(Entry),
 }
 
