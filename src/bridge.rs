@@ -71,6 +71,12 @@ pub async fn stop_entry() -> Result<Option<Entry>, String> {
     from_value(val)
 }
 
+pub async fn resume_entry(id: i64) -> Result<Entry, String> {
+    let wrapper = serde_json::json!({ "id": id });
+    let args = serde_wasm_bindgen::to_value(&wrapper).unwrap();
+    from_value(invoke("resume_entry", args).await)
+}
+
 pub async fn get_active_entry() -> Result<Option<Entry>, String> {
     let args = serde_wasm_bindgen::to_value(&()).unwrap();
     let val = invoke("get_active_entry", args).await;

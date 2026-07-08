@@ -54,6 +54,11 @@ fn update_entry(
 }
 
 #[tauri::command]
+fn resume_entry(db: State<Database>, id: i64) -> Result<crate::models::Entry, String> {
+    entries::resume_entry_impl(&db, id)
+}
+
+#[tauri::command]
 fn delete_entry(db: State<Database>, id: i64) -> Result<(), String> {
     entries::delete_entry_impl(&db, id)
 }
@@ -185,6 +190,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             start_entry,
             stop_entry,
+            resume_entry,
             get_active_entry,
             get_entries,
             update_entry,

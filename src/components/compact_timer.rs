@@ -9,21 +9,26 @@ pub fn CompactTimer() -> Element {
     let mut state = use_context::<AppState>();
     let mut elapsed = use_signal(|| 0u64);
 
+    let mut interval_handle = use_signal(|| Option::<Interval>::None);
+    let is_running = use_memo(move || matches!(*state.timer.read(), TimerState::Running(_)));
+
     use_effect(move || {
-        let timer_state = state.timer.read().clone();
-        if matches!(timer_state, TimerState::Running(_)) {
-            let mut elapsed_copy = elapsed;
-            let interval = Interval::new(1000, move || {
-                let current = *elapsed_copy.read();
-                elapsed_copy.set(current + 1);
-            });
-            std::mem::forget(interval);
+        let is_running = *is_running.read();
+        if is_running {
+            if interval_handle.read().is_none() {
+                let mut elapsed_copy = elapsed;
+                let interval = Interval::new(1000, move || {
+                    let current = *elapsed_copy.read();
+                    elapsed_copy.set(current + 1);
+                });
+                *interval_handle.write() = Some(interval);
+            }
         } else {
             elapsed.set(0);
+            *interval_handle.write() = None;
         }
     });
 
-    let is_running = use_memo(move || matches!(*state.timer.read(), TimerState::Running(_)));
     let title = use_memo(move || {
         match &*state.timer.read() {
             TimerState::Running(e) | TimerState::Stopped(e) => e.title.clone(),
@@ -43,13 +48,17 @@ pub fn CompactTimer() -> Element {
                         }
                     }
                     TimerState::Stopped(entry) => {
-                        let title = entry.title.clone();
-                        if let Ok(new_entry) = bridge::start_entry(title, None, None).await {
-                            state.timer.set(TimerState::Running(new_entry));
+                        if let Ok(resumed) = bridge::resume_entry(entry.id).await {
+                            state.timer.set(TimerState::Running(resumed));
                         }
                     }
                     TimerState::Idle => {
-                        if let Ok(entry) = bridge::start_entry("Untitled".into(), None, None).await {
+                        let title = web_sys::window()
+                            .and_then(|w| w.prompt_with_message_and_default("What are you working on?", "Untitled").ok())
+                            .flatten()
+                            .filter(|s| !s.trim().is_empty())
+                            .unwrap_or_else(|| "Untitled".to_string());
+                        if let Ok(entry) = bridge::start_entry(title, None, None).await {
                             state.timer.set(TimerState::Running(entry));
                         }
                     }

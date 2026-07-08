@@ -134,6 +134,26 @@ pub fn update_entry_impl(
     .map_err(|e| e.to_string())
 }
 
+pub fn resume_entry_impl(db: &Database, id: i64) -> Result<Entry, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE entries SET end_time = datetime('now'), updated_at = datetime('now') WHERE end_time IS NULL AND id != ?1",
+        params![id],
+    ).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE entries SET end_time = NULL, updated_at = datetime('now') WHERE id = ?1",
+        params![id],
+    ).map_err(|e| e.to_string())?;
+
+    conn.query_row(
+        "SELECT id, title, description, start_time, end_time, project_id, created_at, updated_at FROM entries WHERE id = ?1",
+        params![id],
+        |row| Entry::from_row(row),
+    ).map_err(|e| e.to_string())
+}
+
 pub fn delete_entry_impl(db: &Database, id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM entries WHERE id = ?1", params![id])
