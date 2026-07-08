@@ -551,3 +551,32 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   gap: 8px;
 }
 .new-entry-actions .btn { flex: 1; }
+.new-entry-section { display: flex; flex-direction: column; gap: 8px; }
+.section-label-sm {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  margin: 0;
+}
+.project-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-3);
+  transition: all 0.12s;
+}
+.chip:hover { border-color: var(--text-3); }
+.chip-active {
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+}
+.spacer { flex: 1; }

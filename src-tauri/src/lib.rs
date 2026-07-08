@@ -153,7 +153,7 @@ fn open_new_entry(app: tauri::AppHandle) -> Result<(), String> {
     }
     WebviewWindowBuilder::new(&app, "new-entry", WebviewUrl::App("/index.html?new-entry".into()))
         .title("New Entry")
-        .inner_size(320.0, 200.0)
+        .inner_size(360.0, 520.0)
         .decorations(false)
         .resizable(false)
         .transparent(true)
