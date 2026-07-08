@@ -155,8 +155,8 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   transition: color 0.15s;
 }
 .collapse-btn:hover { color: var(--text); }
-.expanded-body { flex: 1; overflow: hidden; }
-.timer-page { display: flex; flex-direction: column; height: 100%; }
+.expanded-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.timer-page { display: flex; flex-direction: column; flex: 1; }
 .timer-block {
   display: flex;
   flex-direction: column;
@@ -270,7 +270,7 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 }
 
 /* ---- Setup page ---- */
-.page { display: flex; flex-direction: column; gap: 24px; padding: 16px; overflow-y: auto; height: 100%; }
+.page { display: flex; flex-direction: column; flex: 1; gap: 24px; padding: 16px; overflow-y: auto; }
 .page-filler { flex: 1; min-height: 0; }
 .section { display: flex; flex-direction: column; gap: 8px; }
 .section-label {
