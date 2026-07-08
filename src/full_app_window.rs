@@ -1,8 +1,6 @@
 use crate::bridge;
 use crate::components::entry_row::EntryRow;
 use crate::components::navigation::{Navigation, Page};
-use crate::components::project_selector::ProjectSelector;
-use crate::components::timer_display::TimerDisplay;
 use crate::state::TimerState;
 use dioxus::prelude::*;
 use gloo_timers::callback::Interval;
@@ -13,8 +11,6 @@ static CSS: Asset = asset!("/assets/app.css");
 #[component]
 pub fn FullAppWindow() -> Element {
     let mut page = use_signal(|| Page::Timer);
-    let mut title = use_signal(String::new);
-    let mut selected_project = use_signal(|| None::<i64>);
     let mut elapsed = use_signal(|| 0u64);
     let mut entries_sig = use_signal(Vec::new);
     let mut projects_sig = use_signal(Vec::new);
@@ -31,7 +27,7 @@ pub fn FullAppWindow() -> Element {
                     timer_state.set(TimerState::Running(entry));
                 }
             }
-            if let Ok(e) = bridge::get_entries(Some(20), None).await {
+            if let Ok(e) = bridge::get_entries(Some(50), None).await {
                 entries_sig.set(e);
             }
             if let Ok(p) = bridge::get_projects().await {
@@ -61,53 +57,11 @@ pub fn FullAppWindow() -> Element {
 
     let is_running = use_memo(move || matches!(*timer_state.read(), TimerState::Running(_)));
 
-    let on_start_stop = {
-        let t = title.read().clone();
-        let pid = *selected_project.read();
-        move |_| {
-            let t = t.clone();
-            spawn(async move {
-                let ts = timer_state.read().clone();
-                match ts {
-                    TimerState::Running(_) => {
-                        if let Ok(Some(entry)) = bridge::stop_entry().await {
-                            timer_state.set(TimerState::Stopped(entry));
-                            if let Ok(entries) = bridge::get_entries(Some(20), None).await {
-                                entries_sig.set(entries);
-                            }
-                        }
-                    }
-                    TimerState::Stopped(_) | TimerState::Idle => {
-                        if !t.is_empty() {
-                            if let Ok(entry) = bridge::start_entry(t, None, pid).await {
-                                timer_state.set(TimerState::Running(entry));
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    };
-
     let on_close = move |_| {
         spawn(async move {
             let _ = bridge::close_current_window().await;
         });
     };
-
-    let primary_label = use_memo(move || {
-        if *is_running.read() { "Stop" } else if matches!(*timer_state.read(), TimerState::Stopped(_)) { "Resume" } else { "Start" }
-    });
-
-    let primary_class = use_memo(move || {
-        if *is_running.read() {
-            "btn btn-primary"
-        } else if matches!(*timer_state.read(), TimerState::Stopped(_)) {
-            "btn btn-outline"
-        } else {
-            "btn btn-primary"
-        }
-    });
 
     let always_on_top = use_memo(move || {
         settings_sig.read().get("always_on_top").cloned().unwrap_or("true".into()) == "true"
@@ -161,16 +115,16 @@ pub fn FullAppWindow() -> Element {
         });
     };
 
-    let subtitle = use_memo(move || {
-        match &*timer_state.read() {
-            TimerState::Running(e) | TimerState::Stopped(e) => Some(e.title.clone()),
-            TimerState::Idle => None,
-        }
-    });
-
     let timer_text = use_memo(move || {
         let total = *elapsed.read();
         format!("{:02}:{:02}:{:02}", total / 3600, (total % 3600) / 60, total % 60)
+    });
+
+    let running_title = use_memo(move || {
+        match &*timer_state.read() {
+            TimerState::Running(e) => e.title.clone(),
+            _ => String::new(),
+        }
     });
 
     rsx! {
@@ -198,43 +152,20 @@ pub fn FullAppWindow() -> Element {
 
             if *page.read() == Page::Timer {
                 div { class: "expanded-body",
-                    div { class: "timer-page",
-                        div { class: "timer-block",
-                            div { class: "mono timer-md", "{timer_text}" }
-                            if let Some(t) = &*subtitle.read() {
-                                span { class: "timer-subtitle", "{t}" }
-                            } else {
-                                span { class: "timer-subtitle timer-subtitle-dim", "no active entry" }
-                            }
+                    if *is_running.read() {
+                        div { class: "running-banner",
+                            span { class: "running-dot" }
+                            span { class: "running-text", "{running_title}" }
+                            span { class: "mono running-time", "{timer_text}" }
                         }
-
-                        div { class: "form-block",
-                            input {
-                                class: "input",
-                                placeholder: "What are you working on?",
-                                value: "{title}",
-                                oninput: move |e| title.set(e.value())
-                            }
-                            ProjectSelector {
-                                projects: projects_sig.read().clone(),
-                                selected_id: *selected_project.read(),
-                                on_select: move |id| selected_project.set(id),
-                            }
-                            button {
-                                class: "{primary_class}",
-                                onclick: on_start_stop,
-                                "{primary_label}"
-                            }
+                    }
+                    div { class: "entries",
+                        h3 { class: "entries-header", "Recent entries" }
+                        if entries_sig.read().is_empty() {
+                            p { class: "entries-empty", "No entries yet." }
                         }
-
-                        div { class: "entries",
-                            h3 { class: "entries-header", "Recent" }
-                            if entries_sig.read().is_empty() {
-                                p { class: "entries-empty", "No entries yet." }
-                            }
-                            for entry in entries_sig.read().iter() {
-                                EntryRow { entry: entry.clone() }
-                            }
+                        for entry in entries_sig.read().iter() {
+                            EntryRow { entry: entry.clone() }
                         }
                     }
                 }

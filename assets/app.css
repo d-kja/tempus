@@ -128,9 +128,11 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 
 /* ---- Expanded view ---- */
 .expanded {
-  height: 100%;
+  height: 100vh;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   user-select: none;
   background: var(--bg);
   backdrop-filter: blur(12px);
@@ -155,8 +157,8 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   transition: color 0.15s;
 }
 .collapse-btn:hover { color: var(--text); }
-.expanded-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-.timer-page { display: flex; flex-direction: column; flex: 1; }
+.expanded-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.timer-page { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .timer-block {
   display: flex;
   flex-direction: column;
@@ -197,9 +199,41 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 .pill-off { background: var(--surface-2); color: var(--text-2); }
 .pill-off:hover { background: rgba(63, 63, 70, 0.6); }
 
+/* ---- Running banner ---- */
+.running-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+.running-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.running-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.running-time {
+  font-size: 13px;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
 /* ---- Entries list ---- */
 .entries {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   margin-top: 16px;
   border-top: 1px solid var(--border-soft);
@@ -270,7 +304,7 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 }
 
 /* ---- Setup page ---- */
-.page { display: flex; flex-direction: column; flex: 1; gap: 24px; padding: 16px; overflow-y: auto; }
+.page { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 24px; padding: 16px; overflow-y: auto; }
 .page-filler { flex: 1; min-height: 0; }
 .section { display: flex; flex-direction: column; gap: 8px; }
 .section-label {
