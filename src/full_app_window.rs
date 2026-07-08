@@ -21,6 +21,8 @@ pub fn FullAppWindow() -> Element {
     let mut export_path = use_signal(String::new);
     let mut status = use_signal(String::new);
     let mut filter_project = use_signal(|| None::<i64>);
+    let mut interval_handle = use_signal(|| Option::<Interval>::None);
+    let is_running = use_memo(move || matches!(*timer_state.read(), TimerState::Running(_)));
 
     use_effect(move || {
         wasm_bindgen_futures::spawn_local(async move {
@@ -44,20 +46,21 @@ pub fn FullAppWindow() -> Element {
     });
 
     use_effect(move || {
-        let ts = timer_state.read().clone();
-        if matches!(ts, TimerState::Running(_)) {
-            let mut e = elapsed;
-            let interval = Interval::new(1000, move || {
-                let current = *e.read();
-                e.set(current + 1);
-            });
-            std::mem::forget(interval);
+        let is_running = *is_running.read();
+        if is_running {
+            if interval_handle.read().is_none() {
+                let mut e = elapsed;
+                let interval = Interval::new(1000, move || {
+                    let current = *e.read();
+                    e.set(current + 1);
+                });
+                *interval_handle.write() = Some(interval);
+            }
         } else {
             elapsed.set(0);
+            *interval_handle.write() = None;
         }
     });
-
-    let is_running = use_memo(move || matches!(*timer_state.read(), TimerState::Running(_)));
 
     let on_close = move |_| {
         spawn(async move {
