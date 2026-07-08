@@ -27,7 +27,10 @@ pub fn FullAppWindow() -> Element {
 
     use_effect(move || {
         bridge::listen_entry_started(move |entry| {
-            timer_state.set(TimerState::Running(entry));
+            let mut ts = timer_state;
+            spawn(async move {
+                ts.set(TimerState::Running(entry));
+            });
         });
     });
 

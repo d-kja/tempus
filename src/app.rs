@@ -50,10 +50,13 @@ pub fn App() -> Element {
             });
 
             use_effect({
-                let mut timer = state.timer;
+                let timer = state.timer;
                 move || {
                     bridge::listen_entry_started(move |entry| {
-                        timer.set(TimerState::Running(entry));
+                        let mut t = timer;
+                        spawn(async move {
+                            t.set(TimerState::Running(entry));
+                        });
                     });
                 }
             });
