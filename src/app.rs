@@ -10,8 +10,8 @@ static CSS: Asset = asset!("/assets/app.css");
 
 fn use_is_settings_window() -> bool {
     web_sys::window()
-        .and_then(|w| w.location().hash().ok())
-        .map(|h| h.contains("settings"))
+        .and_then(|w| w.location().search().ok())
+        .map(|s| s.contains("settings"))
         .unwrap_or(false)
 }
 

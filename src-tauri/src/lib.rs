@@ -123,7 +123,7 @@ fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
         let _ = existing.set_focus();
         return Ok(());
     }
-    WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("/#settings".into()))
+    WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("/index.html?settings".into()))
         .title("Settings")
         .inner_size(360.0, 520.0)
         .decorations(false)
