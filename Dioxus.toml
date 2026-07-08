@@ -8,10 +8,14 @@ asset_dir = "assets"
 title = "Hours"
 
 [web.resource]
-style = ["assets/styles.css"]
+style = ["assets/tailwind.css"]
 
 [web.resource.dev]
 
 [web.watcher]
 reload_html = true
 watch_path = ["src", "assets"]
+
+[tool.dioxus.tailwind]
+input = "tailwind.css"
+output = "assets/tailwind.css"
