@@ -1,5 +1,4 @@
 use crate::db::Database;
-use rusqlite::params;
 use std::fs;
 
 pub fn export_markdown_impl(db: &Database, path: &str) -> Result<(), String> {
