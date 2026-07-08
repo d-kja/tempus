@@ -1,6 +1,7 @@
 use crate::bridge;
 use crate::components::entry_row::EntryRow;
 use crate::components::navigation::{Navigation, Page};
+use crate::components::project_selector::ProjectSelector;
 use crate::state::TimerState;
 use dioxus::prelude::*;
 use gloo_timers::callback::Interval;
@@ -19,6 +20,7 @@ pub fn FullAppWindow() -> Element {
     let mut project_name = use_signal(String::new);
     let mut export_path = use_signal(String::new);
     let mut status = use_signal(String::new);
+    let mut filter_project = use_signal(|| None::<i64>);
 
     use_effect(move || {
         wasm_bindgen_futures::spawn_local(async move {
@@ -127,6 +129,15 @@ pub fn FullAppWindow() -> Element {
         }
     });
 
+    let filtered_entries = use_memo(move || {
+        let all = entries_sig.read();
+        let pid = *filter_project.read();
+        match pid {
+            Some(id) => all.iter().filter(|e| e.project_id == Some(id)).cloned().collect::<Vec<_>>(),
+            None => all.clone(),
+        }
+    });
+
     rsx! {
         document::Link { rel: "stylesheet", href: CSS }
         div { class: "expanded",
@@ -159,12 +170,19 @@ pub fn FullAppWindow() -> Element {
                             span { class: "mono running-time", "{timer_text}" }
                         }
                     }
+                    div { class: "entries-filter",
+                        ProjectSelector {
+                            projects: projects_sig.read().clone(),
+                            selected_id: *filter_project.read(),
+                            on_select: move |id| filter_project.set(id),
+                        }
+                    }
                     div { class: "entries",
                         h3 { class: "entries-header", "Recent entries" }
-                        if entries_sig.read().is_empty() {
+                        if filtered_entries.read().is_empty() {
                             p { class: "entries-empty", "No entries yet." }
                         }
-                        for entry in entries_sig.read().iter() {
+                        for entry in filtered_entries.read().iter() {
                             EntryRow { entry: entry.clone() }
                         }
                     }

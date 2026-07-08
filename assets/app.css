@@ -186,18 +186,35 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 .input-mono { font-family: ui-monospace, monospace; font-size: 12px; }
 
 /* ---- Project selector ---- */
-.project-selector { display: flex; flex-wrap: wrap; gap: 6px; }
+.project-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .pill {
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
-  transition: all 0.12s;
+  transition: all 0.15s;
+  border: 1px solid transparent;
 }
 .pill:active { transform: translateY(1px); }
-.pill-on { background: var(--primary); color: var(--primary-text); }
-.pill-off { background: var(--surface-2); color: var(--text-2); }
-.pill-off:hover { background: rgba(63, 63, 70, 0.6); }
+.pill-on {
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+}
+.pill-off {
+  background: transparent;
+  color: var(--text-3);
+  border-color: var(--border);
+}
+.pill-off:hover {
+  color: var(--text-2);
+  border-color: var(--text-4);
+  background: var(--surface-2);
+}
 
 /* ---- Running banner ---- */
 .running-banner {
@@ -230,13 +247,18 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   flex-shrink: 0;
 }
 
+/* ---- Entries filter ---- */
+.entries-filter {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+
 /* ---- Entries list ---- */
 .entries {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  margin-top: 16px;
-  border-top: 1px solid var(--border-soft);
 }
 .entries-header {
   padding: 12px 16px 6px;

@@ -12,7 +12,7 @@ pub fn ProjectSelector(
             button {
                 class: if selected_id.is_none() { "pill pill-on" } else { "pill pill-off" },
                 onclick: move |_| on_select.call(None),
-                "None"
+                "All"
             }
             for project in &projects {
                 button {
