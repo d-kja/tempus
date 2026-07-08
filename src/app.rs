@@ -6,6 +6,8 @@ use crate::components::expanded_view::ExpandedView;
 use crate::state::{AppState, TimerState};
 use dioxus::prelude::*;
 
+static CSS: Asset = asset!("/assets/app.css");
+
 pub fn App() -> Element {
     let mut state = use_context_provider(|| AppState::new());
 
@@ -35,6 +37,7 @@ pub fn App() -> Element {
     });
 
     rsx! {
+        document::Link { rel: "stylesheet", href: CSS }
         div {
             class: "app-root",
             if *state.is_expanded.read() {
