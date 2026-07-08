@@ -94,7 +94,7 @@ fn export_markdown(db: State<Database>, path: String) -> Result<(), String> {
 #[tauri::command]
 fn set_window_size(window: WebviewWindow, width: f64, height: f64) -> Result<(), String> {
     window
-        .set_size(tauri::PhysicalSize::new(width as u32, height as u32))
+        .set_size(tauri::LogicalSize::new(width, height))
         .map_err(|e| e.to_string())
 }
 
@@ -108,7 +108,7 @@ fn set_always_on_top(window: WebviewWindow, always: bool) -> Result<(), String> 
 #[tauri::command]
 fn set_window_position(window: WebviewWindow, x: f64, y: f64) -> Result<(), String> {
     window
-        .set_position(tauri::PhysicalPosition::new(x as i32, y as i32))
+        .set_position(tauri::LogicalPosition::new(x, y))
         .map_err(|e| e.to_string())
 }
 
@@ -127,21 +127,19 @@ pub fn run() {
 
             commands::window::restore_always_on_top(&db, &win)?;
 
-            let saved_pos = commands::window::load_window_position(&db);
-            let _ = win.set_position(match saved_pos {
-                Some((x, y)) => tauri::PhysicalPosition::new(x as i32, y as i32),
-                None => {
-                    if let Some(monitor) = win.primary_monitor().ok().flatten() {
-                        let size = monitor.size();
-                        tauri::PhysicalPosition::new(
-                            (size.width as i32).saturating_sub(320),
-                            0,
-                        )
-                    } else {
-                        tauri::PhysicalPosition::new(0, 0)
-                    }
+            // Note: on Wayland (Hyprland) clients cannot set window position —
+            // the compositor owns placement. Position is controlled via a
+            // Hyprland window rule, e.g. in hyprland.conf:
+            //   windowrulev2 = move 100% 0%, class:^(com.d-kja-hours)$
+            //   windowrulev2 = float, class:^(com.d-kja-hours)$
+            // On X11 we still save/restore last position below.
+            #[cfg(not(target_os = "linux"))]
+            {
+                let saved_pos = commands::window::load_window_position(&db);
+                if let Some((x, y)) = saved_pos {
+                    let _ = win.set_position(tauri::LogicalPosition::new(x, y));
                 }
-            });
+            }
 
             let handle = app.handle().clone();
             win.on_window_event(move |event| {

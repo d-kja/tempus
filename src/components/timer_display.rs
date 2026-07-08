@@ -12,7 +12,7 @@ pub fn TimerDisplay(elapsed_seconds: Signal<u64>) -> Element {
 
     rsx! {
         div {
-            class: "font-mono text-5xl tabular-nums tracking-tight text-zinc-900 select-none",
+            class: "font-mono tabular-nums tracking-tight text-zinc-900 text-3xl select-none",
             "{formatted}"
         }
     }

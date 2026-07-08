@@ -39,7 +39,7 @@ pub fn App() -> Element {
     rsx! {
         link { rel: "stylesheet", href: CSS }
         div {
-            class: "h-screen w-screen overflow-hidden bg-zinc-50",
+            class: "h-screen w-screen overflow-hidden bg-zinc-50 border border-zinc-200/80 flex flex-col",
             if *state.is_expanded.read() {
                 ExpandedView {}
             } else {

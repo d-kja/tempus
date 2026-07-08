@@ -60,27 +60,26 @@ pub fn ExpandedView() -> Element {
             let t = t.clone();
             let mut state = state.clone();
             spawn(async move {
-            let timer = state.timer.read().clone();
-            match timer {
-                TimerState::Running(_) => {
-                    if let Ok(Some(entry)) = bridge::stop_entry().await {
-                        state.timer.set(TimerState::Stopped(entry));
-                        // Reload entries
-                        if let Ok(entries) = bridge::get_entries(Some(20), None).await {
-                            state.entries.set(entries);
+                let timer = state.timer.read().clone();
+                match timer {
+                    TimerState::Running(_) => {
+                        if let Ok(Some(entry)) = bridge::stop_entry().await {
+                            state.timer.set(TimerState::Stopped(entry));
+                            if let Ok(entries) = bridge::get_entries(Some(20), None).await {
+                                state.entries.set(entries);
+                            }
+                        }
+                    }
+                    TimerState::Stopped(_) | TimerState::Idle => {
+                        if !t.is_empty() {
+                            if let Ok(entry) = bridge::start_entry(t, None, pid).await {
+                                state.timer.set(TimerState::Running(entry));
+                            }
                         }
                     }
                 }
-                TimerState::Stopped(_) | TimerState::Idle => {
-                    if !t.is_empty() {
-                        if let Ok(entry) = bridge::start_entry(t, None, pid).await {
-                            state.timer.set(TimerState::Running(entry));
-                        }
-                    }
-                }
-            }
-        });
-    }
+            });
+        }
     };
 
     let on_minimize = {
@@ -93,35 +92,65 @@ pub fn ExpandedView() -> Element {
         }
     };
 
-    rsx! {
-        div {
-            class: "h-full w-full bg-zinc-50 flex flex-col select-none",
+    let primary_label = use_memo(move || {
+        if *is_running.read() { "Stop" } else if matches!(*state.timer.read(), TimerState::Stopped(_)) { "Resume" } else { "Start" }
+    });
 
+    let primary_class = use_memo(move || {
+        if *is_running.read() {
+            "w-full py-2 rounded-md text-sm font-medium active:translate-y-px transition-all \
+             bg-zinc-900 text-zinc-50 hover:bg-zinc-800"
+        } else if matches!(*state.timer.read(), TimerState::Stopped(_)) {
+            "w-full py-2 rounded-md text-sm font-medium active:translate-y-px transition-all \
+             border border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+        } else {
+            "w-full py-2 rounded-md text-sm font-medium active:translate-y-px transition-all \
+             bg-zinc-900 text-zinc-50 hover:bg-zinc-800"
+        }
+    });
+
+    rsx! {
+        div { class: "h-full w-full bg-zinc-50 flex flex-col select-none",
+
+            // Header
             div { class: "flex items-center justify-between px-4 py-3 border-b border-zinc-100",
-                h2 { class: "text-sm font-medium text-zinc-900", "Hours" }
+                div { class: "flex items-center gap-2",
+                    if *is_running.read() {
+                        span { class: "w-1.5 h-1.5 rounded-full bg-emerald-500" }
+                    }
+                    h2 { class: "text-sm font-medium text-zinc-900", "Hours" }
+                }
                 button {
-                    class: "px-2 py-1 rounded-md text-xs text-zinc-500 hover:bg-zinc-200 transition-colors",
+                    class: "text-xs text-zinc-500 hover:text-zinc-900 active:translate-y-px transition-colors",
                     onclick: on_minimize,
-                    "\u{2191} Collapse"
+                    "\u{2193} Collapse"
                 }
             }
 
+            // Body
             div { class: "flex-1 overflow-hidden",
                 if *page.read() == Page::Timer {
                     div { class: "flex flex-col h-full",
-                        div { class: "flex flex-col items-center justify-center py-4",
+
+                        // Timer block
+                        div { class: "flex flex-col items-center justify-center pt-5 pb-3",
                             TimerDisplay { elapsed_seconds: elapsed }
                             if let Some(entry) = match &*state.timer.read() {
                                 TimerState::Running(e) | TimerState::Stopped(e) => Some(e),
                                 TimerState::Idle => None,
                             } {
-                                span { class: "text-xs text-zinc-500 mt-1", "{entry.title}" }
+                                span { class: "text-[11px] text-zinc-500 mt-1.5", "{entry.title}" }
+                            } else {
+                                span { class: "text-[11px] text-zinc-400 mt-1.5", "no active entry" }
                             }
                         }
 
+                        // Quick log form
                         div { class: "px-4 flex flex-col gap-2",
                             input {
-                                class: "w-full px-3 py-2 rounded-md text-sm border border-zinc-200 bg-zinc-50 placeholder-zinc-400 focus:outline-none focus:border-zinc-400",
+                                class: "w-full px-3 py-2 rounded-md text-sm bg-white border border-zinc-200 \
+                                        placeholder-zinc-400 text-zinc-900 \
+                                        focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-200",
                                 placeholder: "What are you working on?",
                                 value: "{title}",
                                 oninput: move |e| title.set(e.value())
@@ -132,19 +161,24 @@ pub fn ExpandedView() -> Element {
                                 on_select: move |id| selected_project.set(id),
                             }
                             button {
-                                class: "w-full py-2 rounded-md text-sm bg-zinc-800 text-zinc-50 hover:bg-zinc-700 transition-colors",
+                                class: "{primary_class}",
                                 onclick: on_start_stop,
-                                if *is_running.read() { "Stop" } else { "Start" }
+                                "{primary_label}"
                             }
                         }
 
+                        // Recent entries
                         div { class: "flex-1 overflow-y-auto mt-4 border-t border-zinc-100",
-                            h3 { class: "px-4 py-2 text-xs font-medium text-zinc-500", "Recent Entries" }
-                            for entry in state.entries.read().iter() {
-                                EntryRow { entry: entry.clone() }
+                            h3 { class: "px-4 pt-3 pb-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-400",
+                                "Recent"
                             }
                             if state.entries.read().is_empty() {
-                                p { class: "px-4 py-4 text-xs text-zinc-400 text-center", "No entries yet." }
+                                p { class: "px-4 py-6 text-xs text-zinc-400 text-center", "No entries yet." }
+                            }
+                            div { class: "divide-y divide-zinc-100",
+                                for entry in state.entries.read().iter() {
+                                    EntryRow { entry: entry.clone() }
+                                }
                             }
                         }
                     }

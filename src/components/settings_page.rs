@@ -28,27 +28,29 @@ pub fn SettingsPage() -> Element {
     };
 
     rsx! {
-        div { class: "flex flex-col gap-4 p-4",
-            section {
-                h3 { class: "text-sm font-medium text-zinc-900 mb-2", "Display" }
-                label { class: "flex items-center justify-between py-2 cursor-pointer",
-                    span { class: "text-sm text-zinc-700", "Always on top" }
-                    button {
+        div { class: "flex flex-col gap-6 p-4",
+            section { class: "flex flex-col gap-2",
+                h3 { class: "text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-400", "Display" }
+                button {
+                    class: "flex items-center justify-between w-full py-2 group",
+                    onclick: on_toggle,
+                    span { class: "text-sm text-zinc-800", "Always on top" }
+                    span {
                         class: if *always_on_top.read() {
-                            "w-10 h-5 rounded-full bg-zinc-800 transition-colors relative"
+                            "w-10 h-5 rounded-full bg-zinc-900 relative transition-colors"
                         } else {
-                            "w-10 h-5 rounded-full bg-zinc-300 transition-colors relative"
+                            "w-10 h-5 rounded-full bg-zinc-300 relative transition-colors"
                         },
-                        onclick: on_toggle,
-                        div {
+                        span {
                             class: if *always_on_top.read() {
-                                "absolute right-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-all"
+                                "absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-zinc-50 transition-all"
                             } else {
-                                "absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-all"
+                                "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-all"
                             }
                         }
                     }
                 }
+                p { class: "text-[11px] text-zinc-500", "Keep the timer visible above all other windows." }
             }
         }
     }
