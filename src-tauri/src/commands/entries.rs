@@ -161,6 +161,13 @@ pub fn delete_entry_impl(db: &Database, id: i64) -> Result<(), String> {
     Ok(())
 }
 
+pub fn clear_all_entries_impl(db: &Database) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM entries", [])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

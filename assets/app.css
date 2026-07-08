@@ -125,6 +125,22 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   color: var(--text-2);
 }
 .btn-outline:hover { background: var(--surface-2); }
+.btn-danger {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: rgba(239, 68, 68, 0.9);
+}
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.7);
+}
+.btn-sm { width: auto; padding: 6px 14px; font-size: 12px; }
+
+.section-divider {
+  height: 1px;
+  background: var(--border-soft);
+  margin: 6px 0;
+}
 
 /* ---- Expanded view ---- */
 .expanded {

@@ -64,6 +64,11 @@ fn delete_entry(db: State<Database>, id: i64) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn clear_all_entries(db: State<Database>) -> Result<(), String> {
+    entries::clear_all_entries_impl(&db)
+}
+
+#[tauri::command]
 fn create_project(db: State<Database>, name: String) -> Result<crate::models::Project, String> {
     projects::create_project_impl(&db, &name)
 }
@@ -195,6 +200,7 @@ pub fn run() {
             get_entries,
             update_entry,
             delete_entry,
+            clear_all_entries,
             create_project,
             get_projects,
             delete_project,

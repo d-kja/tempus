@@ -97,6 +97,12 @@ pub async fn delete_entry(id: i64) -> Result<(), String> {
     Ok(())
 }
 
+pub async fn clear_all_entries() -> Result<(), String> {
+    let args = serde_wasm_bindgen::to_value(&()).unwrap();
+    let _ = invoke("clear_all_entries", args).await;
+    Ok(())
+}
+
 pub async fn create_project(name: String) -> Result<Project, String> {
     let wrapper = serde_json::json!({ "name": name });
     let args = serde_wasm_bindgen::to_value(&wrapper).unwrap();

@@ -253,6 +253,25 @@ pub fn FullAppWindow() -> Element {
                                 "Export Markdown"
                             }
                         }
+                        div { class: "section-divider" }
+                        section { class: "section",
+                            h3 { class: "section-label", "Danger Zone" }
+                            button {
+                                class: "btn btn-danger",
+                                onclick: move |_| {
+                                    spawn(async move {
+                                        if web_sys::window()
+                                            .and_then(|w| w.confirm_with_message("Delete all entries? This cannot be undone.").ok())
+                                            .unwrap_or(false)
+                                        {
+                                            let _ = bridge::clear_all_entries().await;
+                                            entries_sig.set(Vec::new());
+                                        }
+                                    });
+                                },
+                                "Clear all entries"
+                            }
+                        }
                         div { class: "page-filler" }
                     }
                 }
