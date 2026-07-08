@@ -2,6 +2,8 @@ use crate::bridge;
 use dioxus::prelude::*;
 use std::collections::HashMap;
 
+static CSS: Asset = asset!("/assets/app.css");
+
 #[component]
 pub fn SettingsWindow() -> Element {
     let mut settings = use_signal(|| HashMap::new());
@@ -45,6 +47,7 @@ pub fn SettingsWindow() -> Element {
     };
 
     rsx! {
+        document::Link { rel: "stylesheet", href: CSS }
         div { class: "settings-window",
             div { class: "settings-window-header",
                 h2 { class: "settings-window-title", "Settings" }
