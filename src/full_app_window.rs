@@ -304,6 +304,7 @@ pub fn FullAppWindow() -> Element {
                                 "Export Markdown"
                             }
                         }
+                        div { class: "page-filler" }
                     }
                 }
             } else {
@@ -324,6 +325,7 @@ pub fn FullAppWindow() -> Element {
                             }
                             p { class: "helper-text", "Keep the timer visible above all other windows." }
                         }
+                        div { class: "page-filler" }
                     }
                 }
             }

@@ -1,5 +1,5 @@
 :root {
-  --bg: rgba(24, 24, 27, 0.85);
+  --bg: rgba(24, 24, 27, 0.75);
   --surface: rgba(24, 24, 27, 0.6);
   --surface-2: rgba(39, 39, 42, 0.5);
   --border: rgba(63, 63, 70, 0.5);
@@ -260,6 +260,7 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 
 /* ---- Setup page ---- */
 .page { display: flex; flex-direction: column; gap: 24px; padding: 16px; overflow-y: auto; height: 100%; }
+.page-filler { flex: 1; min-height: 0; }
 .section { display: flex; flex-direction: column; gap: 8px; }
 .section-label {
   font-size: 10px;
