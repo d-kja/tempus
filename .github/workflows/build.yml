@@ -40,25 +40,45 @@ jobs:
       - name: Install Dioxus CLI
         run: cargo install dioxus-cli --version "^0.7"
 
+      - name: Bump version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VER="${{ github.ref_name }}"
+          VER="${VER#v}"
+          sed -i "s/^version = \".*\"/version = \"$VER\"/" src-tauri/Cargo.toml
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VER\"/" src-tauri/tauri.conf.json
+
+      - name: Set build version
+        if: ${{ not(startsWith(github.ref, 'refs/tags/v')) }}
+        run: |
+          VER="0.1.${{ github.run_number }}"
+          sed -i "s/^version = \".*\"/version = \"$VER\"/" src-tauri/Cargo.toml
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VER\"/" src-tauri/tauri.conf.json
+
+      - name: Read version
+        id: version
+        run: |
+          VER=$(grep '^version' src-tauri/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', github.run_number) }}
-          releaseName: "hours ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', github.run_number) }}"
+          tagName: v${{ steps.version.outputs.version }}
+          releaseName: hours v${{ steps.version.outputs.version }}
           releaseBody: "See assets to download."
-          releaseDraft: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          releaseDraft: ${{ not(startsWith(github.ref, 'refs/tags/v')) }}
           prerelease: false
           uploadWorkflowArtifacts: true
-          workflowArtifactNamePattern: "hours-[version]-linux-x86_64"
+          workflowArtifactNamePattern: hours-[version]-linux-x86_64
 
       - name: Upload raw binary to release
         if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', github.run_number) }}"
-          gh release upload "$TAG" \
+          gh release upload "v${{ steps.version.outputs.version }}" \
             src-tauri/target/release/hours \
             --clobber
