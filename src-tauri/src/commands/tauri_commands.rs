@@ -1,11 +1,7 @@
-mod commands;
-mod db;
-mod models;
-
-use crate::commands::{entries, projects, settings, export as export_mod};
-use db::Database;
+use crate::commands::{entries, projects, settings, export as export_mod, window as window_mod};
+use crate::db::Database;
 use std::collections::HashMap;
-use tauri::{Manager, State, WebviewWindow};
+use tauri::{State, WebviewWindow};
 
 #[tauri::command]
 fn start_entry(
@@ -110,71 +106,4 @@ fn set_window_position(window: WebviewWindow, x: f64, y: f64) -> Result<(), Stri
     window
         .set_position(tauri::PhysicalPosition::new(x as i32, y as i32))
         .map_err(|e| e.to_string())
-}
-
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
-        .setup(|app| {
-            let app_dir = app
-                .path()
-                .app_data_dir()
-                .expect("failed to resolve app data dir");
-            let db = Database::new(app_dir).map_err(|e| format!("DB init failed: {}", e))?;
-
-            let win = app.get_webview_window("main").expect("no main window");
-
-            commands::window::restore_always_on_top(&db, &win)?;
-
-            let saved_pos = commands::window::load_window_position(&db);
-            let _ = win.set_position(match saved_pos {
-                Some((x, y)) => tauri::PhysicalPosition::new(x as i32, y as i32),
-                None => {
-                    if let Some(monitor) = win.primary_monitor().ok().flatten() {
-                        let size = monitor.size();
-                        tauri::PhysicalPosition::new(
-                            (size.width as i32).saturating_sub(320),
-                            0,
-                        )
-                    } else {
-                        tauri::PhysicalPosition::new(0, 0)
-                    }
-                }
-            });
-
-            let handle = app.handle().clone();
-            win.on_window_event(move |event| {
-                if let tauri::WindowEvent::Moved(position) = event {
-                    let db_state = handle.state::<Database>();
-                    let _ = commands::window::save_window_position(
-                        &db_state,
-                        position.x as f64,
-                        position.y as f64,
-                    );
-                }
-            });
-
-            app.manage(db);
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![
-            start_entry,
-            stop_entry,
-            get_active_entry,
-            get_entries,
-            update_entry,
-            delete_entry,
-            create_project,
-            get_projects,
-            delete_project,
-            get_settings_db,
-            update_settings_db,
-            export_markdown,
-            set_window_size,
-            set_always_on_top,
-            set_window_position,
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
 }

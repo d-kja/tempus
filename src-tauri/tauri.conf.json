@@ -13,9 +13,12 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "hours",
-        "width": 800,
-        "height": 600
+        "title": "Hours",
+        "width": 320,
+        "height": 160,
+        "decorations": false,
+        "resizable": false,
+        "alwaysOnTop": true
       }
     ],
     "security": {
