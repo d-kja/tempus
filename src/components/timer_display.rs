@@ -11,9 +11,6 @@ pub fn TimerDisplay(elapsed_seconds: Signal<u64>) -> Element {
     });
 
     rsx! {
-        div {
-            class: "font-mono tabular-nums tracking-tight text-zinc-100 select-none",
-            "{formatted}"
-        }
+        div { class: "mono timer-lg", "{formatted}" }
     }
 }

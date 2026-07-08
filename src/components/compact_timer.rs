@@ -80,35 +80,29 @@ pub fn CompactTimer() -> Element {
 
     let primary_class = use_memo(move || {
         if matches!(*state.timer.read(), TimerState::Stopped(_)) {
-            "w-full py-2 rounded-md text-sm font-medium active:translate-y-px transition-all \
-             border border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+            "btn btn-outline"
         } else {
-            "w-full py-2 rounded-md text-sm font-medium active:translate-y-px transition-all \
-             bg-zinc-100 text-zinc-950 hover:bg-white"
+            "btn btn-primary"
         }
+    });
+
+    let title_text = use_memo(move || {
+        let t = title.read();
+        if t.is_empty() { "no active entry".to_string() } else { t.clone() }
     });
 
     rsx! {
         div {
-            class: "h-full w-full flex flex-col select-none",
+            class: "compact",
             ondblclick: on_expand,
 
-            // Header: status + expand
-            div {
-                class: "flex items-center justify-between px-3 pt-2.5",
-                div { class: "flex items-center gap-1.5 min-w-0",
-                    if *is_running.read() {
-                        span { class: "w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" }
-                    } else {
-                        span { class: "w-1.5 h-1.5 rounded-full bg-zinc-600 shrink-0" }
-                    }
-                    span {
-                        class: "text-[11px] text-zinc-400 truncate",
-                        if title.read().is_empty() { "no active entry" } else { "{title}" }
-                    }
+            div { class: "compact-header",
+                div { class: "compact-status",
+                    span { class: if *is_running.read() { "dot dot-on" } else { "dot dot-off" } }
+                    span { class: "compact-title", "{title_text}" }
                 }
                 button {
-                    class: "text-zinc-500 hover:text-zinc-100 active:translate-y-px transition-colors -mr-0.5",
+                    class: "icon-btn",
                     onclick: {
                         let mut state = state.clone();
                         move |e: dioxus::events::MouseEvent| {
@@ -123,23 +117,16 @@ pub fn CompactTimer() -> Element {
                 }
             }
 
-            // Timer
-            div {
-                class: "flex-1 flex items-center justify-center",
-                div {
-                    class: "text-center",
-                    div { class: "text-4xl",
-                        TimerDisplay { elapsed_seconds: elapsed }
-                    }
-                    p {
-                        class: "text-[10px] uppercase tracking-[0.18em] text-zinc-500 mt-1.5",
+            div { class: "compact-timer",
+                div { class: "compact-timer-inner",
+                    TimerDisplay { elapsed_seconds: elapsed }
+                    p { class: "label",
                         if *is_running.read() { "running" } else { "idle" }
                     }
                 }
             }
 
-            // Action
-            div { class: "px-3 pb-3",
+            div { class: "compact-action",
                 button {
                     class: "{primary_class}",
                     onclick: on_start_stop,
