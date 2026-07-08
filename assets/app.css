@@ -86,25 +86,6 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   align-items: center;
   gap: 6px;
 }
-.reset-btn {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  line-height: 1;
-  color: var(--text-4);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: transparent;
-  transition: all 0.15s;
-  padding: 0;
-}
-.reset-btn:hover {
-  color: rgb(248, 113, 113);
-  border-color: rgba(239, 68, 68, 0.4);
-}
 .compact-timer {
   flex: 1;
   display: flex;
@@ -128,6 +109,31 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   margin-top: 6px;
 }
 .compact-action { padding: 0 12px 12px; }
+.action-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.action-row .btn { flex: 1; }
+.reset-btn {
+  width: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition: all 0.15s;
+  padding: 0;
+}
+.reset-btn:hover {
+  color: rgb(248, 113, 113);
+  border-color: rgba(239, 68, 68, 0.4);
+}
 
 /* ---- Buttons ---- */
 .btn {

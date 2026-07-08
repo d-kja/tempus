@@ -108,13 +108,6 @@ pub fn CompactTimer() -> Element {
                     span { class: "compact-title", "{title_text}" }
                 }
                 div { class: "compact-header-actions",
-                    if *has_entry.read() {
-                        button {
-                            class: "reset-btn",
-                            onclick: on_reset,
-                            "\u{21BA}"
-                        }
-                    }
                     button {
                         class: "icon-btn",
                         onclick: move |e: dioxus::events::MouseEvent| {
@@ -138,10 +131,19 @@ pub fn CompactTimer() -> Element {
             }
 
             div { class: "compact-action",
-                button {
-                    class: if *is_running.read() { "btn btn-primary" } else { "btn btn-primary" },
-                    onclick: on_start_stop,
-                    "{primary_label}"
+                div { class: "action-row",
+                    button {
+                        class: "btn btn-primary",
+                        onclick: on_start_stop,
+                        "{primary_label}"
+                    }
+                    if *has_entry.read() {
+                        button {
+                            class: "reset-btn",
+                            onclick: on_reset,
+                            "\u{21BA}"
+                        }
+                    }
                 }
             }
         }
