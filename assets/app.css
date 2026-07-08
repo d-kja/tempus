@@ -480,6 +480,19 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 .toggle-knob-on { right: 2px; background: var(--primary-text); }
 .toggle-knob-off { left: 2px; background: var(--text-2); }
 .helper-text { font-size: 11px; color: var(--text-3); }
+.folder-path {
+  font-size: 12px;
+  color: var(--text-3);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ---- Settings window ---- */
 .settings-window {

@@ -102,6 +102,15 @@ fn export_markdown(db: State<Database>, path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn pick_export_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let path = app.dialog()
+        .file()
+        .blocking_pick_folder();
+    Ok(path.map(|p| p.to_string()))
+}
+
+#[tauri::command]
 fn set_window_size(window: WebviewWindow, width: f64, height: f64) -> Result<(), String> {
     window
         .set_size(tauri::LogicalSize::new(width, height))
@@ -172,6 +181,7 @@ fn set_window_position(window: WebviewWindow, x: f64, y: f64) -> Result<(), Stri
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let app_dir = app
                 .path()
@@ -227,6 +237,7 @@ pub fn run() {
             get_settings_db,
             update_settings_db,
             export_markdown,
+            pick_export_folder,
             set_window_size,
             set_always_on_top,
             set_window_position,

@@ -112,21 +112,32 @@ pub fn FullAppWindow() -> Element {
 
     let on_export = move |_| {
         let path = export_path.read().clone();
+        let full = if path.is_empty() {
+            path
+        } else {
+            format!("{}/timesheet.md", path.trim_end_matches('/'))
+        };
         spawn(async move {
-            match bridge::export_markdown(path).await {
-                Ok(_) => status.set("Exported successfully.".into()),
+            match bridge::export_markdown(full).await {
+                Ok(_) => status.set("Exported to timesheet.md".into()),
                 Err(e) => status.set(format!("Export error: {}", e)),
             }
         });
     };
 
-    let on_save_path = move |_| {
-        let path = export_path.read().clone();
-        let mut s = settings_sig.read().clone();
-        s.insert("export_path".into(), path);
+    let on_pick_folder = move |_| {
         spawn(async move {
-            let _ = bridge::update_settings(s).await;
-            status.set("Path saved.".into());
+            match bridge::pick_export_folder().await {
+                Ok(Some(p)) => {
+                    export_path.set(p.clone());
+                    let mut s = settings_sig.read().clone();
+                    s.insert("export_path".into(), p);
+                    let _ = bridge::update_settings(s).await;
+                    status.set("Export folder saved.".into());
+                }
+                Ok(None) => {}
+                Err(e) => status.set(format!("Error: {}", e)),
+            }
         });
     };
 
@@ -279,23 +290,26 @@ pub fn FullAppWindow() -> Element {
                         }
 
                         section { class: "section",
-                            h3 { class: "section-label", "Export Path" }
+                            h3 { class: "section-label", "Export Folder" }
                             div { class: "row",
-                                input {
-                                    class: "input input-mono",
-                                    placeholder: "/home/user/report.md",
-                                    value: "{export_path}",
-                                    oninput: move |e| export_path.set(e.value())
-                                }
                                 button {
                                     class: "btn btn-sm btn-outline",
-                                    onclick: on_save_path,
-                                    "Save"
+                                    onclick: on_pick_folder,
+                                    "Choose Folder"
                                 }
+                                if !export_path.read().is_empty() {
+                                    span { class: "folder-path", "{export_path}" }
+                                }
+                            }
+                            p { class: "helper-text",
+                                "Exports as "
+                                code { "timesheet.md" }
+                                " in the selected folder."
                             }
                             button {
                                 class: "btn btn-primary",
                                 onclick: on_export,
+                                disabled: export_path.read().is_empty(),
                                 "Export Markdown"
                             }
                         }

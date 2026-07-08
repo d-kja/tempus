@@ -131,16 +131,20 @@ pub async fn get_settings() -> Result<std::collections::HashMap<String, String>,
 pub async fn update_settings(
     settings: std::collections::HashMap<String, String>,
 ) -> Result<(), String> {
-    let args = serde_wasm_bindgen::to_value(&settings).unwrap();
-    let _ = invoke("update_settings_db", args).await;
-    Ok(())
+    let wrapper = serde_json::json!({ "newSettings": settings });
+    let args = serde_wasm_bindgen::to_value(&wrapper).unwrap();
+    from_value::<()>(invoke("update_settings_db", args).await)
 }
 
 pub async fn export_markdown(path: String) -> Result<(), String> {
     let wrapper = serde_json::json!({ "path": path });
     let args = serde_wasm_bindgen::to_value(&wrapper).unwrap();
-    let _val: Result<String, String> = from_value(invoke("export_markdown", args).await);
-    Ok(())
+    from_value::<()>(invoke("export_markdown", args).await)
+}
+
+pub async fn pick_export_folder() -> Result<Option<String>, String> {
+    let args = serde_wasm_bindgen::to_value(&()).unwrap();
+    from_value::<Option<String>>(invoke("pick_export_folder", args).await)
 }
 
 pub async fn set_window_size(width: f64, height: f64) -> Result<(), String> {
