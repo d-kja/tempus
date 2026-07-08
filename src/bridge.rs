@@ -30,6 +30,7 @@ pub struct Project {
 struct StartEntryArgs {
     title: String,
     description: Option<String>,
+    #[serde(rename = "projectId")]
     project_id: Option<i64>,
 }
 
