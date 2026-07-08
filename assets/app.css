@@ -430,6 +430,7 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 .row { display: flex; gap: 6px; }
 .row .input { flex: 1; }
 .btn-sm { padding: 6px 12px; width: auto; }
+.btn-full { width: 100%; }
 .status-box {
   font-size: 12px;
   color: var(--text-2);

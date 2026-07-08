@@ -291,14 +291,13 @@ pub fn FullAppWindow() -> Element {
 
                         section { class: "section",
                             h3 { class: "section-label", "Export Folder" }
-                            div { class: "row",
-                                button {
-                                    class: "btn btn-sm btn-outline",
-                                    onclick: on_pick_folder,
-                                    "Choose Folder"
-                                }
-                                if !export_path.read().is_empty() {
-                                    span { class: "folder-path", "{export_path}" }
+                            button {
+                                class: "btn btn-outline btn-full",
+                                onclick: on_pick_folder,
+                                if export_path.read().is_empty() {
+                                    "Choose Export Folder"
+                                } else {
+                                    "{export_path}"
                                 }
                             }
                             p { class: "helper-text",
