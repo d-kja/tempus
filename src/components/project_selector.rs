@@ -12,9 +12,9 @@ pub fn ProjectSelector(
         div { class: "flex flex-wrap gap-1.5",
             button {
                 class: if selected_id.is_none() {
-                    "{base} bg-zinc-900 text-zinc-50"
+                    "{base} bg-zinc-100 text-zinc-950"
                 } else {
-                    "{base} bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                    "{base} bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
                 },
                 onclick: move |_| on_select.call(None),
                 "None"
@@ -22,9 +22,9 @@ pub fn ProjectSelector(
             for project in &projects {
                 button {
                     class: if Some(project.id) == selected_id {
-                        "{base} bg-zinc-900 text-zinc-50"
+                        "{base} bg-zinc-100 text-zinc-950"
                     } else {
-                        "{base} bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                        "{base} bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
                     },
                     onclick: {
                         let pid = project.id;

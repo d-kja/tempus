@@ -81,34 +81,34 @@ pub fn CompactTimer() -> Element {
     let primary_class = use_memo(move || {
         if matches!(*state.timer.read(), TimerState::Stopped(_)) {
             "w-full py-2 rounded-md text-sm font-medium active:translate-y-px transition-all \
-             border border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+             border border-zinc-700 text-zinc-200 hover:bg-zinc-800"
         } else {
             "w-full py-2 rounded-md text-sm font-medium active:translate-y-px transition-all \
-             bg-zinc-900 text-zinc-50 hover:bg-zinc-800"
+             bg-zinc-100 text-zinc-950 hover:bg-white"
         }
     });
 
     rsx! {
         div {
-            class: "h-full w-full bg-zinc-50 flex flex-col select-none",
+            class: "h-full w-full flex flex-col select-none",
             ondblclick: on_expand,
 
-            // Header strip: status + expand affordance
+            // Header: status + expand
             div {
                 class: "flex items-center justify-between px-3 pt-2.5",
                 div { class: "flex items-center gap-1.5 min-w-0",
                     if *is_running.read() {
-                        span { class: "w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" }
+                        span { class: "w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" }
                     } else {
-                        span { class: "w-1.5 h-1.5 rounded-full bg-zinc-300 shrink-0" }
+                        span { class: "w-1.5 h-1.5 rounded-full bg-zinc-600 shrink-0" }
                     }
                     span {
-                        class: "text-[11px] text-zinc-500 truncate",
+                        class: "text-[11px] text-zinc-400 truncate",
                         if title.read().is_empty() { "no active entry" } else { "{title}" }
                     }
                 }
                 button {
-                    class: "text-zinc-400 hover:text-zinc-900 active:translate-y-px transition-colors -mr-0.5",
+                    class: "text-zinc-500 hover:text-zinc-100 active:translate-y-px transition-colors -mr-0.5",
                     onclick: {
                         let mut state = state.clone();
                         move |e: dioxus::events::MouseEvent| {
@@ -128,9 +128,11 @@ pub fn CompactTimer() -> Element {
                 class: "flex-1 flex items-center justify-center",
                 div {
                     class: "text-center",
-                    TimerDisplay { elapsed_seconds: elapsed }
+                    div { class: "text-4xl",
+                        TimerDisplay { elapsed_seconds: elapsed }
+                    }
                     p {
-                        class: "text-[10px] uppercase tracking-[0.18em] text-zinc-400 mt-1.5",
+                        class: "text-[10px] uppercase tracking-[0.18em] text-zinc-500 mt-1.5",
                         if *is_running.read() { "running" } else { "idle" }
                     }
                 }

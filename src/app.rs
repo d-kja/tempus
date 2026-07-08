@@ -36,7 +36,7 @@ pub fn App() -> Element {
 
     rsx! {
         div {
-            class: "h-screen w-screen overflow-hidden bg-zinc-50 border border-zinc-200/80 flex flex-col",
+            class: "floating-panel h-screen w-screen overflow-hidden text-zinc-100 border border-zinc-800/60 flex flex-col",
             if *state.is_expanded.read() {
                 ExpandedView {}
             } else {
