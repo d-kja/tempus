@@ -10,6 +10,7 @@ pub fn CompactTimer() -> Element {
     let mut elapsed = use_signal(|| 0u64);
 
     let mut interval_handle = use_signal(|| Option::<Interval>::None);
+    let mut poll_handle = use_signal(|| Option::<Interval>::None);
     let is_running = use_memo(move || matches!(*state.timer.read(), TimerState::Running(_)));
 
     use_effect(move || {
@@ -26,6 +27,24 @@ pub fn CompactTimer() -> Element {
         } else {
             elapsed.set(0);
             *interval_handle.write() = None;
+        }
+    });
+
+    use_effect(move || {
+        if poll_handle.read().is_none() {
+            let timer = state.timer;
+            let interval = Interval::new(2000, move || {
+                let current = timer.read().clone();
+                if matches!(current, TimerState::Idle) {
+                    let mut t = timer;
+                    wasm_bindgen_futures::spawn_local(async move {
+                        if let Ok(Some(entry)) = bridge::get_active_entry().await {
+                            t.set(TimerState::Running(entry));
+                        }
+                    });
+                }
+            });
+            *poll_handle.write() = Some(interval);
         }
     });
 

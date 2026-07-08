@@ -49,15 +49,6 @@ pub fn App() -> Element {
                 }
             });
 
-            use_hook({
-                let mut timer = state.timer;
-                move || {
-                    bridge::listen_entry_started(move |entry| {
-                        timer.set(TimerState::Running(entry));
-                    });
-                }
-            });
-
             rsx! {
                 document::Link { rel: "stylesheet", href: CSS }
                 div { class: "app-root", CompactTimer {} }

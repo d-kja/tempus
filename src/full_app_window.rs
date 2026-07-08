@@ -25,15 +25,6 @@ pub fn FullAppWindow() -> Element {
     let mut clear_confirm = use_signal(|| false);
     let is_running = use_memo(move || matches!(*timer_state.read(), TimerState::Running(_)));
 
-    use_hook({
-        let mut ts = timer_state;
-        move || {
-            bridge::listen_entry_started(move |entry| {
-                ts.set(TimerState::Running(entry));
-            });
-        }
-    });
-
     use_effect(move || {
         wasm_bindgen_futures::spawn_local(async move {
             if let Ok(active) = bridge::get_active_entry().await {

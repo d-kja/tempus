@@ -5,19 +5,16 @@ mod models;
 use crate::commands::{entries, projects, settings, export as export_mod};
 use db::Database;
 use std::collections::HashMap;
-use tauri::{Emitter, Manager, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl};
+use tauri::{Manager, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl};
 
 #[tauri::command]
 fn start_entry(
-    app: tauri::AppHandle,
     db: State<Database>,
     title: String,
     description: Option<String>,
     project_id: Option<i64>,
 ) -> Result<crate::models::Entry, String> {
-    let entry = entries::start_entry_impl(&db, &title, description.as_deref(), project_id)?;
-    let _ = app.emit("entry-started", &entry);
-    Ok(entry)
+    entries::start_entry_impl(&db, &title, description.as_deref(), project_id)
 }
 
 #[tauri::command]
