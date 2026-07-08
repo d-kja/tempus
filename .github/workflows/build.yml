@@ -45,8 +45,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v0.1.0-{0}', github.run_number) }}
-          releaseName: "hours ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v0.1.0-{0}', github.run_number) }}"
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', github.run_number) }}
+          releaseName: "hours ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', github.run_number) }}"
           releaseBody: "See assets to download."
           releaseDraft: ${{ !startsWith(github.ref, 'refs/tags/v') }}
           prerelease: false
@@ -58,7 +58,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v0.1.0-{0}', github.run_number) }}"
+          TAG="${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', github.run_number) }}"
           gh release upload "$TAG" \
             src-tauri/target/release/hours \
             --clobber
