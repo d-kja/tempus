@@ -4,16 +4,11 @@ use dioxus::prelude::*;
 pub enum Page {
     Timer,
     Setup,
-    Settings,
 }
 
 #[component]
 pub fn Navigation(current: Signal<Page>) -> Element {
-    let tabs = [
-        (Page::Timer, "Timer"),
-        (Page::Setup, "Setup"),
-        (Page::Settings, "Settings"),
-    ];
+    let tabs = [(Page::Timer, "Timer"), (Page::Setup, "Setup")];
 
     rsx! {
         nav { class: "nav",

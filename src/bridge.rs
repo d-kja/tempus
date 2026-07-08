@@ -145,3 +145,15 @@ pub async fn set_always_on_top(always: bool) -> Result<(), String> {
     let _ = invoke("set_always_on_top", args).await;
     Ok(())
 }
+
+pub async fn open_settings() -> Result<(), String> {
+    let args = serde_wasm_bindgen::to_value(&()).unwrap();
+    let _ = invoke("open_settings", args).await;
+    Ok(())
+}
+
+pub async fn close_current_window() -> Result<(), String> {
+    let args = serde_wasm_bindgen::to_value(&()).unwrap();
+    let _ = invoke("close_current_window", args).await;
+    Ok(())
+}

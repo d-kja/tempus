@@ -3,7 +3,6 @@ use crate::components::entry_row::EntryRow;
 use crate::components::navigation::{Navigation, Page};
 use crate::components::project_selector::ProjectSelector;
 use crate::components::setup_page::SetupPage;
-use crate::components::settings_page::SettingsPage;
 use crate::components::timer_display::TimerDisplay;
 use crate::state::{AppState, TimerState};
 use dioxus::prelude::*;
@@ -177,8 +176,6 @@ pub fn ExpandedView() -> Element {
                     }
                 } else if *page.read() == Page::Setup {
                     SetupPage {}
-                } else {
-                    SettingsPage {}
                 }
             }
 

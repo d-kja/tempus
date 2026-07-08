@@ -103,15 +103,11 @@ pub fn CompactTimer() -> Element {
                 }
                 button {
                     class: "icon-btn",
-                    onclick: {
-                        let mut state = state.clone();
-                        move |e: dioxus::events::MouseEvent| {
-                            e.stop_propagation();
-                            state.is_expanded.set(true);
-                            spawn(async move {
-                                let _ = bridge::set_window_size(340.0, 480.0).await;
-                            });
-                        }
+                    onclick: move |e: dioxus::events::MouseEvent| {
+                        e.stop_propagation();
+                        spawn(async move {
+                            let _ = bridge::open_settings().await;
+                        });
                     },
                     "\u{22EF}"
                 }

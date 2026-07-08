@@ -5,7 +5,7 @@ mod models;
 use crate::commands::{entries, projects, settings, export as export_mod};
 use db::Database;
 use std::collections::HashMap;
-use tauri::{Manager, State, WebviewWindow};
+use tauri::{Manager, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl};
 
 #[tauri::command]
 fn start_entry(
@@ -99,10 +99,36 @@ fn set_window_size(window: WebviewWindow, width: f64, height: f64) -> Result<(),
 }
 
 #[tauri::command]
-fn set_always_on_top(window: WebviewWindow, always: bool) -> Result<(), String> {
-    window
-        .set_always_on_top(always)
-        .map_err(|e| e.to_string())
+fn set_always_on_top(app: tauri::AppHandle, always: bool) -> Result<(), String> {
+    if let Some(main) = app.get_webview_window("main") {
+        main.set_always_on_top(always).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(existing) = app.get_webview_window("settings") {
+        let _ = existing.show();
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+    WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("/#settings".into()))
+        .title("Settings")
+        .inner_size(280.0, 380.0)
+        .decorations(false)
+        .resizable(false)
+        .transparent(true)
+        .shadow(true)
+        .always_on_top(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn close_current_window(window: WebviewWindow) -> Result<(), String> {
+    window.close().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -172,6 +198,8 @@ pub fn run() {
             set_window_size,
             set_always_on_top,
             set_window_position,
+            open_settings,
+            close_current_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
