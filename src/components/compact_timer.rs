@@ -58,16 +58,6 @@ pub fn CompactTimer() -> Element {
         }
     };
 
-    let on_expand = {
-        let mut state = state.clone();
-        move |_: dioxus::events::MouseEvent| {
-            state.is_expanded.set(true);
-            spawn(async move {
-                let _ = bridge::set_window_size(340.0, 480.0).await;
-            });
-        }
-    };
-
     let primary_label = use_memo(move || {
         if matches!(*state.timer.read(), TimerState::Idle) {
             "Start"
@@ -92,10 +82,7 @@ pub fn CompactTimer() -> Element {
     });
 
     rsx! {
-        div {
-            class: "compact",
-            ondblclick: on_expand,
-
+        div { class: "compact",
             div { class: "compact-header",
                 div { class: "compact-status",
                     span { class: if *is_running.read() { "dot dot-on" } else { "dot dot-off" } }
@@ -103,15 +90,11 @@ pub fn CompactTimer() -> Element {
                 }
                 button {
                     class: "icon-btn",
-                    onclick: {
-                        let mut state = state.clone();
-                        move |e: dioxus::events::MouseEvent| {
-                            e.stop_propagation();
-                            state.is_expanded.set(true);
-                            spawn(async move {
-                                let _ = bridge::set_window_size(340.0, 480.0).await;
-                            });
-                        }
+                    onclick: move |e: dioxus::events::MouseEvent| {
+                        e.stop_propagation();
+                        spawn(async move {
+                            let _ = bridge::open_settings().await;
+                        });
                     },
                     "\u{22EF}"
                 }

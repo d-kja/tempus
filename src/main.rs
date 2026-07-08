@@ -1,13 +1,13 @@
 mod app;
 mod bridge;
 mod components;
-mod settings_window;
+mod full_app_window;
 mod state;
 
 use app::App;
 use dioxus::prelude::*;
 use dioxus_logger::tracing::Level;
-use settings_window::SettingsWindow;
+use full_app_window::FullAppWindow;
 
 fn location_has_settings() -> bool {
     web_sys::window()
@@ -19,7 +19,7 @@ fn location_has_settings() -> bool {
 fn main() {
     dioxus_logger::init(Level::INFO).expect("failed to init logger");
     if location_has_settings() {
-        launch(SettingsWindow);
+        launch(FullAppWindow);
     } else {
         launch(App);
     }

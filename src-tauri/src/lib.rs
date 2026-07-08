@@ -115,7 +115,7 @@ fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
     }
     WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("/#settings".into()))
         .title("Settings")
-        .inner_size(320.0, 420.0)
+        .inner_size(360.0, 520.0)
         .decorations(false)
         .resizable(true)
         .transparent(true)

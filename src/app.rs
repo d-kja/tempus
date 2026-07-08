@@ -2,7 +2,6 @@
 
 use crate::bridge;
 use crate::components::compact_timer::CompactTimer;
-use crate::components::expanded_view::ExpandedView;
 use crate::state::{AppState, TimerState};
 use dioxus::prelude::*;
 
@@ -13,24 +12,12 @@ pub fn App() -> Element {
 
     use_effect({
         let mut timer = state.timer;
-        let mut entries = state.entries;
-        let mut projects = state.projects;
-        let mut settings = state.settings;
         move || {
             wasm_bindgen_futures::spawn_local(async move {
                 if let Ok(active) = bridge::get_active_entry().await {
                     if let Some(entry) = active {
                         timer.set(TimerState::Running(entry));
                     }
-                }
-                if let Ok(e) = bridge::get_entries(Some(20), None).await {
-                    entries.set(e);
-                }
-                if let Ok(p) = bridge::get_projects().await {
-                    projects.set(p);
-                }
-                if let Ok(s) = bridge::get_settings().await {
-                    settings.set(s);
                 }
             });
         }
@@ -40,11 +27,7 @@ pub fn App() -> Element {
         document::Link { rel: "stylesheet", href: CSS }
         div {
             class: "app-root",
-            if *state.is_expanded.read() {
-                ExpandedView {}
-            } else {
-                CompactTimer {}
-            }
+            CompactTimer {}
         }
     }
 }
