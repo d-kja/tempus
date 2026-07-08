@@ -13,6 +13,8 @@ pub fn CompactTimer() -> Element {
     let mut poll_handle = use_signal(|| Option::<Interval>::None);
     let is_running = use_memo(move || matches!(*state.timer.read(), TimerState::Running(_)));
 
+    let has_entry = use_memo(move || !matches!(*state.timer.read(), TimerState::Idle));
+
     use_effect(move || {
         let is_running = *is_running.read();
         if is_running {
@@ -62,16 +64,10 @@ pub fn CompactTimer() -> Element {
                 let timer = state.timer.read().clone();
                 match timer {
                     TimerState::Running(_) => {
-                        if let Ok(Some(entry)) = bridge::stop_entry().await {
-                            state.timer.set(TimerState::Stopped(entry));
-                        }
+                        let _ = bridge::stop_entry().await;
+                        state.timer.set(TimerState::Idle);
                     }
-                    TimerState::Stopped(entry) => {
-                        if let Ok(resumed) = bridge::resume_entry(entry.id).await {
-                            state.timer.set(TimerState::Running(resumed));
-                        }
-                    }
-                    TimerState::Idle => {
+                    TimerState::Stopped(_) | TimerState::Idle => {
                         let _ = bridge::open_new_entry().await;
                     }
                 }
@@ -79,22 +75,24 @@ pub fn CompactTimer() -> Element {
         }
     };
 
-    let primary_label = use_memo(move || {
-        if matches!(*state.timer.read(), TimerState::Idle) {
-            "Start"
-        } else if *is_running.read() {
-            "Stop"
-        } else {
-            "Resume"
+    let on_reset = {
+        let mut state = state.clone();
+        move |_| {
+            spawn(async move {
+                let timer = state.timer.read().clone();
+                match timer {
+                    TimerState::Running(entry) | TimerState::Stopped(entry) => {
+                        let _ = bridge::delete_entry(entry.id).await;
+                        state.timer.set(TimerState::Idle);
+                    }
+                    TimerState::Idle => {}
+                }
+            });
         }
-    });
+    };
 
-    let primary_class = use_memo(move || {
-        if matches!(*state.timer.read(), TimerState::Stopped(_)) {
-            "btn btn-outline"
-        } else {
-            "btn btn-primary"
-        }
+    let primary_label = use_memo(move || {
+        if *is_running.read() { "Stop" } else { "Start" }
     });
 
     let title_text = use_memo(move || {
@@ -109,15 +107,24 @@ pub fn CompactTimer() -> Element {
                     span { class: if *is_running.read() { "dot dot-on" } else { "dot dot-off" } }
                     span { class: "compact-title", "{title_text}" }
                 }
-                button {
-                    class: "icon-btn",
-                    onclick: move |e: dioxus::events::MouseEvent| {
-                        e.stop_propagation();
-                        spawn(async move {
-                            let _ = bridge::open_settings().await;
-                        });
-                    },
-                    "\u{22EF}"
+                div { class: "compact-header-actions",
+                    if *has_entry.read() {
+                        button {
+                            class: "reset-btn",
+                            onclick: on_reset,
+                            "\u{21BA}"
+                        }
+                    }
+                    button {
+                        class: "icon-btn",
+                        onclick: move |e: dioxus::events::MouseEvent| {
+                            e.stop_propagation();
+                            spawn(async move {
+                                let _ = bridge::open_settings().await;
+                            });
+                        },
+                        "\u{22EF}"
+                    }
                 }
             }
 
@@ -132,7 +139,7 @@ pub fn CompactTimer() -> Element {
 
             div { class: "compact-action",
                 button {
-                    class: "{primary_class}",
+                    class: if *is_running.read() { "btn btn-primary" } else { "btn btn-primary" },
                     onclick: on_start_stop,
                     "{primary_label}"
                 }
