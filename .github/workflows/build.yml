@@ -72,7 +72,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v${{ steps.version.outputs.version }}
-          releaseName: hours v${{ steps.version.outputs.version }}
+          releaseName: tempus v${{ steps.version.outputs.version }}
           releaseBody: "See assets to download."
           releaseDraft: false
           prerelease: false
@@ -83,5 +83,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "v${{ steps.version.outputs.version }}" \
-            target/release/hours \
+            target/release/tempus \
             --clobber
