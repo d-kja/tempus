@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "hours",
+  "productName": "tempus",
   "version": "0.1.0",
-  "identifier": "com.d-kja.hours",
+  "identifier": "com.d-kja.tempus",
   "build": {
     "beforeDevCommand": "dx serve --port 1420",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Hours",
+        "title": "Tempus",
         "width": 320,
         "height": 160,
         "decorations": false,
