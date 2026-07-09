@@ -74,7 +74,7 @@ jobs:
           tagName: v${{ steps.version.outputs.version }}
           releaseName: hours v${{ steps.version.outputs.version }}
           releaseBody: "See assets to download."
-          releaseDraft: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          releaseDraft: false
           prerelease: false
 
       - name: Upload raw binary to release
