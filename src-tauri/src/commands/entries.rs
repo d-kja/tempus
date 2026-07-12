@@ -9,6 +9,11 @@ pub fn start_entry_impl(
     project_id: Option<i64>,
 ) -> Result<Entry, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let title = if title.trim().is_empty() || title.eq_ignore_ascii_case("undefined") {
+        "Untitled"
+    } else {
+        title
+    };
 
     conn.execute(
         "UPDATE entries SET end_time = datetime('now'), updated_at = datetime('now') WHERE end_time IS NULL",
@@ -199,6 +204,13 @@ mod tests {
         assert_eq!(entry.title, "Test Task");
         assert!(entry.end_time.is_none());
         assert!(!entry.start_time.is_empty());
+    }
+
+    #[test]
+    fn test_start_entry_defaults_undefined_title() {
+        let db = setup_db();
+        let entry = start_entry_impl(&db, "Undefined", None, None).unwrap();
+        assert_eq!(entry.title, "Untitled");
     }
 
     #[test]
