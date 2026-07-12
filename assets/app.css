@@ -70,11 +70,22 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 }
 .timer-pill-running {
   gap: 8px;
-  padding: 5px 6px 5px 7px;
+  padding: 6px;
   border-radius: 20px;
-  background: rgba(17, 17, 19, 0.74);
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.42), 0 1px 0 rgba(255, 255, 255, 0.16) inset;
+  background: rgba(17, 17, 19, 0.72);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 18px 38px -14px rgba(0, 0, 0, 0.72), 0 1px 0 rgba(255, 255, 255, 0.17) inset;
+  backdrop-filter: blur(12px);
+}
+.timer-running-content {
+  position: relative;
+  display: grid;
+  align-items: center;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
+  column-gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 .timer-pill-mini {
   gap: 8px;
@@ -89,22 +100,37 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+.timer-handle-dot {
+  width: 5px;
+  height: 5px;
+  flex-shrink: 0;
   border-radius: 50%;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 20px;
-  line-height: 0;
-  padding-bottom: 7px;
+  background: rgba(255, 255, 255, 0.66);
 }
 .timer-clock {
-  color: rgba(215, 215, 208, 0.72);
-  font-size: 16px;
-  line-height: 1;
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex-shrink: 0;
 }
 .timer-pill .timer-lg {
-  font-size: 18px;
-  font-weight: 680;
-  letter-spacing: 0.01em;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+}
+.timer-running-content > .timer-lg {
+  position: absolute;
+  left: 50%;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+  transform: translateX(-50%);
 }
 .timer-pill-mini .timer-lg {
   font-size: 13px;
@@ -114,8 +140,12 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 .timer-separator {
   width: 1px;
   height: 22px;
-  background: rgba(255, 255, 255, 0.14);
+  grid-column: 4;
+  flex-shrink: 0;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.13);
 }
+.timer-icon { width: 16px; height: 16px; display: block; flex-shrink: 0; }
 .timer-control {
   width: 30px;
   height: 30px;
@@ -133,14 +163,21 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
 .timer-state-action:active { transform: scale(0.96); }
 .timer-control-pause {
   color: #111113;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.91);
+  box-shadow: 0 8px 18px -12px rgba(0, 0, 0, 0.53);
 }
 .timer-control-pause:hover { background: #fff; }
 .timer-control-stop {
   color: rgba(248, 248, 244, 0.86);
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+.timer-pill-running .timer-control {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 0;
 }
 .timer-control-stop:hover { background: rgba(255, 255, 255, 0.14); }
 .timer-control-settings {
