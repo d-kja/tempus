@@ -14,8 +14,8 @@
     "windows": [
       {
         "title": "Tempus",
-        "width": 320,
-        "height": 160,
+        "width": 246,
+        "height": 43,
         "decorations": false,
         "resizable": true,
         "alwaysOnTop": true,

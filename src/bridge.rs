@@ -65,6 +65,19 @@ pub async fn stop_entry() -> Result<Option<Entry>, String> {
     from_value(val)
 }
 
+pub async fn resume_entry(id: i64) -> Result<Entry, String> {
+    let args = serde_wasm_bindgen::to_value(&serde_json::json!({ "id": id })).unwrap();
+    let val = invoke("resume_entry", args).await;
+    from_value(val)
+}
+
+#[allow(dead_code)]
+pub async fn open_settings() -> Result<(), String> {
+    let args = serde_wasm_bindgen::to_value(&()).unwrap();
+    let _ = invoke("open_settings", args).await;
+    Ok(())
+}
+
 pub async fn get_active_entry() -> Result<Option<Entry>, String> {
     let args = serde_wasm_bindgen::to_value(&()).unwrap();
     let val = invoke("get_active_entry", args).await;
@@ -140,12 +153,6 @@ pub async fn set_always_on_top(always: bool) -> Result<(), String> {
     let wrapper = serde_json::json!({ "always": always });
     let args = serde_wasm_bindgen::to_value(&wrapper).unwrap();
     let _ = invoke("set_always_on_top", args).await;
-    Ok(())
-}
-
-pub async fn open_settings() -> Result<(), String> {
-    let args = serde_wasm_bindgen::to_value(&()).unwrap();
-    let _ = invoke("open_settings", args).await;
     Ok(())
 }
 
