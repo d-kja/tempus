@@ -1,4 +1,5 @@
 pub mod compact_timer;
+pub mod edit_entry_window;
 pub mod entry_row;
 pub mod navigation;
 pub mod new_entry_window;

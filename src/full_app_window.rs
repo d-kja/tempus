@@ -1,4 +1,4 @@
-use crate::bridge;
+use crate::bridge::{self, Entry};
 use crate::components::entry_row::EntryRow;
 use crate::components::navigation::{Navigation, Page};
 use crate::components::project_selector::ProjectSelector;
@@ -23,6 +23,7 @@ pub fn FullAppWindow() -> Element {
     let mut filter_project = use_signal(|| None::<i64>);
     let mut interval_handle = use_signal(|| Option::<Interval>::None);
     let mut clear_confirm = use_signal(|| false);
+    let mut delete_confirm = use_signal(|| None::<Entry>);
     let is_running = use_memo(move || matches!(*timer_state.read(), TimerState::Running(_)));
 
     use_effect(move || {
@@ -63,12 +64,27 @@ pub fn FullAppWindow() -> Element {
         }
     });
 
-    let on_delete_entry = move |id: i64| {
+    let on_delete_entry = move |entry: Entry| {
+        delete_confirm.set(Some(entry));
+    };
+
+    let confirm_delete_entry = move |_| {
+        let entry = delete_confirm.read().clone();
+        let Some(entry) = entry else {
+            return;
+        };
+        delete_confirm.set(None);
         spawn(async move {
-            let _ = bridge::delete_entry(id).await;
+            let _ = bridge::delete_entry(entry.id).await;
             if let Ok(e) = bridge::get_entries(Some(50), None).await {
                 entries_sig.set(e);
             }
+        });
+    };
+
+    let on_edit_entry = move |entry: Entry| {
+        spawn(async move {
+            let _ = bridge::open_edit_entry(entry.id).await;
         });
     };
 
@@ -79,7 +95,12 @@ pub fn FullAppWindow() -> Element {
     };
 
     let always_on_top = use_memo(move || {
-        settings_sig.read().get("always_on_top").cloned().unwrap_or("true".into()) == "true"
+        settings_sig
+            .read()
+            .get("always_on_top")
+            .cloned()
+            .unwrap_or("true".into())
+            == "true"
     });
 
     let on_toggle_aot = move |_| {
@@ -95,7 +116,9 @@ pub fn FullAppWindow() -> Element {
 
     let on_add_project = move |_| {
         let name = project_name.read().clone();
-        if name.is_empty() { return; }
+        if name.is_empty() {
+            return;
+        }
         spawn(async move {
             match bridge::create_project(name).await {
                 Ok(_) => {
@@ -143,21 +166,28 @@ pub fn FullAppWindow() -> Element {
 
     let timer_text = use_memo(move || {
         let total = *elapsed.read();
-        format!("{:02}:{:02}:{:02}", total / 3600, (total % 3600) / 60, total % 60)
+        format!(
+            "{:02}:{:02}:{:02}",
+            total / 3600,
+            (total % 3600) / 60,
+            total % 60
+        )
     });
 
-    let running_title = use_memo(move || {
-        match &*timer_state.read() {
-            TimerState::Running(e) => e.title.clone(),
-            _ => String::new(),
-        }
+    let running_title = use_memo(move || match &*timer_state.read() {
+        TimerState::Running(e) => e.title.clone(),
+        _ => String::new(),
     });
 
     let filtered_entries = use_memo(move || {
         let all = entries_sig.read();
         let pid = *filter_project.read();
         match pid {
-            Some(id) => all.iter().filter(|e| e.project_id == Some(id)).cloned().collect::<Vec<_>>(),
+            Some(id) => all
+                .iter()
+                .filter(|e| e.project_id == Some(id))
+                .cloned()
+                .collect::<Vec<_>>(),
             None => all.clone(),
         }
     });
@@ -241,6 +271,7 @@ pub fn FullAppWindow() -> Element {
                                 entry: entry.clone(),
                                 projects: projects_sig.read().clone(),
                                 on_delete: on_delete_entry,
+                                on_edit: on_edit_entry,
                             }
                         }
                     }
@@ -340,6 +371,30 @@ pub fn FullAppWindow() -> Element {
             }
 
             Navigation { current: page }
+
+            if let Some(entry) = delete_confirm.read().clone() {
+                div { class: "confirm-modal-backdrop",
+                    div { class: "confirm-modal", role: "dialog", aria_modal: "true",
+                        div { class: "confirm-modal-icon", "!" }
+                        div { class: "confirm-modal-copy",
+                            h3 { "Delete entry?" }
+                            p { "This will permanently remove \"{entry.title}\"." }
+                        }
+                        div { class: "confirm-modal-actions",
+                            button {
+                                class: "btn btn-sm btn-outline",
+                                onclick: move |_| delete_confirm.set(None),
+                                "Cancel"
+                            }
+                            button {
+                                class: "btn btn-sm btn-danger",
+                                onclick: confirm_delete_entry,
+                                "Delete"
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

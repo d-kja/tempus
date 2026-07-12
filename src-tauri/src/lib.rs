@@ -2,10 +2,12 @@ mod commands;
 mod db;
 mod models;
 
-use crate::commands::{entries, projects, settings, export as export_mod};
+use crate::commands::{entries, export as export_mod, projects, settings};
 use db::Database;
 use std::collections::HashMap;
-use tauri::{webview::PageLoadEvent, Manager, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl};
+use tauri::{
+    webview::PageLoadEvent, Manager, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+};
 
 #[tauri::command]
 fn start_entry(
@@ -38,19 +40,28 @@ fn get_entries(
 
 #[tauri::command]
 fn update_entry(
+    app: tauri::AppHandle,
     db: State<Database>,
     id: i64,
-    title: Option<String>,
-    description: Option<Option<String>>,
-    project_id: Option<Option<i64>>,
+    title: String,
+    description: Option<String>,
+    project_id: Option<i64>,
+    start_time: String,
+    end_time: Option<String>,
 ) -> Result<crate::models::Entry, String> {
-    entries::update_entry_impl(
+    let entry = entries::update_entry_impl(
         &db,
         id,
-        title.as_deref(),
-        description.as_ref().map(|d| d.as_deref()),
+        &title,
+        description.as_deref(),
         project_id,
-    )
+        &start_time,
+        end_time.as_deref(),
+    )?;
+    if let Some(settings) = app.get_webview_window("settings") {
+        let _ = settings.eval("window.location.reload()");
+    }
+    Ok(entry)
 }
 
 #[tauri::command]
@@ -124,16 +135,20 @@ fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
         let _ = existing.set_focus();
         return Ok(());
     }
-    WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("/index.html?settings".into()))
-        .title("Settings")
-        .inner_size(360.0, 520.0)
-        .decorations(false)
-        .resizable(true)
-        .transparent(true)
-        .shadow(true)
-        .always_on_top(true)
-        .build()
-        .map_err(|e| e.to_string())?;
+    WebviewWindowBuilder::new(
+        &app,
+        "settings",
+        WebviewUrl::App("/index.html?settings".into()),
+    )
+    .title("Settings")
+    .inner_size(360.0, 520.0)
+    .decorations(false)
+    .resizable(true)
+    .transparent(true)
+    .shadow(true)
+    .always_on_top(true)
+    .build()
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -141,33 +156,37 @@ fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
 fn open_new_entry(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(existing) = app.get_webview_window("new-entry") {
         let _ = existing.hide();
-        let _ = existing.set_min_size(Some(tauri::LogicalSize::new(520.0, 357.0)));
-        let _ = existing.set_max_size(Some(tauri::LogicalSize::new(520.0, 357.0)));
-        let _ = existing.set_size(tauri::LogicalSize::new(520.0, 357.0));
+        let _ = existing.set_min_size(Some(tauri::LogicalSize::new(636.0, 367.0)));
+        let _ = existing.set_max_size(Some(tauri::LogicalSize::new(636.0, 367.0)));
+        let _ = existing.set_size(tauri::LogicalSize::new(636.0, 367.0));
         let _ = existing.show();
         let _ = existing.set_focus();
         return Ok(());
     }
-    let window = WebviewWindowBuilder::new(&app, "new-entry", WebviewUrl::App("/index.html?new-entry".into()))
-        .title("New Entry")
-        .inner_size(520.0, 357.0)
-        .min_inner_size(520.0, 357.0)
-        .max_inner_size(520.0, 357.0)
-        .decorations(false)
-        .resizable(false)
-        .transparent(true)
-        .shadow(true)
-        .always_on_top(true)
-        .on_page_load(|window, payload| {
-            if matches!(payload.event(), PageLoadEvent::Finished) {
-                let _ = window.set_min_size(Some(tauri::LogicalSize::new(520.0, 357.0)));
-                let _ = window.set_max_size(Some(tauri::LogicalSize::new(520.0, 357.0)));
-                let _ = window.set_size(tauri::LogicalSize::new(520.0, 357.0));
-            }
-        })
-        .visible(false)
-        .build()
-        .map_err(|e| e.to_string())?;
+    let window = WebviewWindowBuilder::new(
+        &app,
+        "new-entry",
+        WebviewUrl::App("/index.html?new-entry".into()),
+    )
+    .title("New Entry")
+    .inner_size(520.0, 357.0)
+    .min_inner_size(520.0, 357.0)
+    .max_inner_size(520.0, 357.0)
+    .decorations(false)
+    .resizable(false)
+    .transparent(true)
+    .shadow(true)
+    .always_on_top(true)
+    .on_page_load(|window, payload| {
+        if matches!(payload.event(), PageLoadEvent::Finished) {
+            let _ = window.set_min_size(Some(tauri::LogicalSize::new(520.0, 357.0)));
+            let _ = window.set_max_size(Some(tauri::LogicalSize::new(520.0, 357.0)));
+            let _ = window.set_size(tauri::LogicalSize::new(520.0, 357.0));
+        }
+    })
+    .visible(false)
+    .build()
+    .map_err(|e| e.to_string())?;
     window
         .set_min_size(Some(tauri::LogicalSize::new(520.0, 357.0)))
         .map_err(|e| e.to_string())?;
@@ -176,6 +195,56 @@ fn open_new_entry(app: tauri::AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     window
         .set_size(tauri::LogicalSize::new(520.0, 357.0))
+        .map_err(|e| e.to_string())?;
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn open_edit_entry(app: tauri::AppHandle, id: i64) -> Result<(), String> {
+    let label = format!("edit-entry-{}", id);
+    if let Some(existing) = app.get_webview_window(&label) {
+        let _ = existing.hide();
+        let _ = existing.set_min_size(Some(tauri::LogicalSize::new(636.0, 367.0)));
+        let _ = existing.set_max_size(Some(tauri::LogicalSize::new(636.0, 367.0)));
+        let _ = existing.set_size(tauri::LogicalSize::new(636.0, 367.0));
+        let _ = existing.show();
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+    let window = WebviewWindowBuilder::new(
+        &app,
+        &label,
+        WebviewUrl::App(format!("/index.html?edit-entry={}", id).into()),
+    )
+    .title("Edit Entry")
+    .inner_size(636.0, 367.0)
+    .min_inner_size(636.0, 367.0)
+    .max_inner_size(636.0, 367.0)
+    .decorations(false)
+    .resizable(false)
+    .transparent(true)
+    .shadow(true)
+    .always_on_top(true)
+    .on_page_load(|window, payload| {
+        if matches!(payload.event(), PageLoadEvent::Finished) {
+            let _ = window.set_min_size(Some(tauri::LogicalSize::new(636.0, 367.0)));
+            let _ = window.set_max_size(Some(tauri::LogicalSize::new(636.0, 367.0)));
+            let _ = window.set_size(tauri::LogicalSize::new(636.0, 367.0));
+        }
+    })
+    .visible(false)
+    .build()
+    .map_err(|e| e.to_string())?;
+    window
+        .set_min_size(Some(tauri::LogicalSize::new(636.0, 367.0)))
+        .map_err(|e| e.to_string())?;
+    window
+        .set_max_size(Some(tauri::LogicalSize::new(636.0, 367.0)))
+        .map_err(|e| e.to_string())?;
+    window
+        .set_size(tauri::LogicalSize::new(636.0, 367.0))
         .map_err(|e| e.to_string())?;
     window.show().map_err(|e| e.to_string())?;
     window.set_focus().map_err(|e| e.to_string())?;
@@ -258,6 +327,7 @@ pub fn run() {
             set_window_position,
             open_settings,
             open_new_entry,
+            open_edit_entry,
             close_current_window,
         ])
         .run(tauri::generate_context!())

@@ -40,11 +40,9 @@ pub fn stop_entry_impl(db: &Database) -> Result<Option<Entry>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
     let active: Option<i64> = conn
-        .query_row(
-            "SELECT id FROM entries WHERE end_time IS NULL",
-            [],
-            |row| row.get(0),
-        )
+        .query_row("SELECT id FROM entries WHERE end_time IS NULL", [], |row| {
+            row.get(0)
+        })
         .ok();
 
     if let Some(active_id) = active {
@@ -101,13 +99,15 @@ pub fn get_entries_impl(db: &Database, limit: i64, offset: i64) -> Result<Vec<En
 pub fn update_entry_impl(
     db: &Database,
     id: i64,
-    title: Option<&str>,
-    description: Option<Option<&str>>,
-    project_id: Option<Option<i64>>,
+    title: &str,
+    description: Option<&str>,
+    project_id: Option<i64>,
+    start_time: &str,
+    end_time: Option<&str>,
 ) -> Result<Entry, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
-    let current: Entry = conn
+    let _current: Entry = conn
         .query_row(
             "SELECT id, title, description, start_time, end_time, project_id, created_at, updated_at FROM entries WHERE id = ?1",
             params![id],
@@ -115,19 +115,9 @@ pub fn update_entry_impl(
         )
         .map_err(|e| format!("Entry not found: {}", e))?;
 
-    let new_title = title.unwrap_or(&current.title).to_string();
-    let new_desc = match description {
-        Some(d) => d.map(|s| s.to_string()),
-        None => current.description.clone(),
-    };
-    let new_project = match project_id {
-        Some(p) => p,
-        None => current.project_id,
-    };
-
     conn.execute(
-        "UPDATE entries SET title = ?1, description = ?2, project_id = ?3, updated_at = datetime('now') WHERE id = ?4",
-        params![new_title, new_desc, new_project, id],
+        "UPDATE entries SET title = ?1, description = ?2, project_id = ?3, start_time = ?4, end_time = ?5, updated_at = datetime('now') WHERE id = ?6",
+        params![title, description, project_id, start_time, end_time, id],
     )
     .map_err(|e| e.to_string())?;
 
@@ -263,8 +253,7 @@ mod tests {
     fn test_resume_creates_new_entry_with_same_information() {
         let db = setup_db();
         let project = crate::commands::projects::create_project_impl(&db, "Project").unwrap();
-        let source =
-            start_entry_impl(&db, "Task", Some("Details"), Some(project.id)).unwrap();
+        let source = start_entry_impl(&db, "Task", Some("Details"), Some(project.id)).unwrap();
         let stopped = stop_entry_impl(&db).unwrap().unwrap();
         let resumed = resume_entry_impl(&db, source.id).unwrap();
 
@@ -300,5 +289,26 @@ mod tests {
         delete_entry_impl(&db, entry.id).unwrap();
         let entries = get_entries_impl(&db, 10, 0).unwrap();
         assert!(entries.is_empty());
+    }
+
+    #[test]
+    fn test_update_entry_updates_details_and_times() {
+        let db = setup_db();
+        let entry = start_entry_impl(&db, "Original", Some("Notes"), None).unwrap();
+        let updated = update_entry_impl(
+            &db,
+            entry.id,
+            "Updated",
+            Some("Updated notes"),
+            None,
+            "2026-07-12 09:14:00",
+            Some("2026-07-12 10:40:00"),
+        )
+        .unwrap();
+
+        assert_eq!(updated.title, "Updated");
+        assert_eq!(updated.description.as_deref(), Some("Updated notes"));
+        assert_eq!(updated.start_time, "2026-07-12 09:14:00");
+        assert_eq!(updated.end_time.as_deref(), Some("2026-07-12 10:40:00"));
     }
 }

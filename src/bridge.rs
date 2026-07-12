@@ -98,6 +98,26 @@ pub async fn delete_entry(id: i64) -> Result<(), String> {
     Ok(())
 }
 
+pub async fn update_entry(
+    id: i64,
+    title: String,
+    description: Option<String>,
+    project_id: Option<i64>,
+    start_time: String,
+    end_time: Option<String>,
+) -> Result<Entry, String> {
+    let wrapper = serde_json::json!({
+        "id": id,
+        "title": title,
+        "description": description,
+        "projectId": project_id,
+        "startTime": start_time,
+        "endTime": end_time,
+    });
+    let args = serde_wasm_bindgen::to_value(&wrapper).unwrap();
+    from_value(invoke("update_entry", args).await)
+}
+
 pub async fn clear_all_entries() -> Result<(), String> {
     let args = serde_wasm_bindgen::to_value(&()).unwrap();
     let _ = invoke("clear_all_entries", args).await;
@@ -165,5 +185,11 @@ pub async fn close_current_window() -> Result<(), String> {
 pub async fn open_new_entry() -> Result<(), String> {
     let args = serde_wasm_bindgen::to_value(&()).unwrap();
     let _ = invoke("open_new_entry", args).await;
+    Ok(())
+}
+
+pub async fn open_edit_entry(id: i64) -> Result<(), String> {
+    let args = serde_wasm_bindgen::to_value(&serde_json::json!({ "id": id })).unwrap();
+    let _ = invoke("open_edit_entry", args).await;
     Ok(())
 }

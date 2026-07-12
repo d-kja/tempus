@@ -2,6 +2,7 @@
 
 use crate::bridge;
 use crate::components::compact_timer::CompactTimer;
+use crate::components::edit_entry_window::EditEntryWindow;
 use crate::components::new_entry_window::NewEntryWindow;
 use crate::full_app_window::FullAppWindow;
 use crate::state::{AppState, TimerState};
@@ -13,9 +14,15 @@ fn use_page() -> &'static str {
     web_sys::window()
         .and_then(|w| w.location().search().ok())
         .map(|s| {
-            if s.contains("settings") { "settings" }
-            else if s.contains("new-entry") { "new-entry" }
-            else { "compact" }
+            if s.contains("settings") {
+                "settings"
+            } else if s.contains("edit-entry") {
+                "edit-entry"
+            } else if s.contains("new-entry") {
+                "new-entry"
+            } else {
+                "compact"
+            }
         })
         .unwrap_or("compact")
 }
@@ -31,6 +38,11 @@ pub fn App() -> Element {
         "new-entry" => {
             rsx! {
                 NewEntryWindow {}
+            }
+        }
+        "edit-entry" => {
+            rsx! {
+                EditEntryWindow {}
             }
         }
         _ => {
