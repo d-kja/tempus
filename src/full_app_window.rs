@@ -82,6 +82,14 @@ pub fn FullAppWindow() -> Element {
         });
     };
 
+    let confirm_clear_entries = move |_| {
+        spawn(async move {
+            let _ = bridge::clear_all_entries().await;
+            entries_sig.set(Vec::new());
+            clear_confirm.set(false);
+        });
+    };
+
     let on_edit_entry = move |entry: Entry| {
         spawn(async move {
             let _ = bridge::open_edit_entry(entry.id).await;
@@ -240,29 +248,6 @@ pub fn FullAppWindow() -> Element {
                                 "\u{1F5D1}"
                             }
                         }
-                        if *clear_confirm.read() {
-                            div { class: "confirm-clear",
-                                span { "Clear all entries?" }
-                                div { class: "confirm-clear-actions",
-                                    button {
-                                        class: "btn btn-sm btn-danger",
-                                        onclick: move |_| {
-                                            spawn(async move {
-                                                let _ = bridge::clear_all_entries().await;
-                                                entries_sig.set(Vec::new());
-                                                clear_confirm.set(false);
-                                            });
-                                        },
-                                        "Yes, clear"
-                                    }
-                                    button {
-                                        class: "btn btn-sm btn-outline",
-                                        onclick: move |_| clear_confirm.set(false),
-                                        "Cancel"
-                                    }
-                                }
-                            }
-                        }
                         if filtered_entries.read().is_empty() {
                             p { class: "entries-empty", "No entries yet." }
                         }
@@ -390,6 +375,30 @@ pub fn FullAppWindow() -> Element {
                                 class: "btn btn-sm btn-danger",
                                 onclick: confirm_delete_entry,
                                 "Delete"
+                            }
+                        }
+                    }
+                }
+            }
+
+            if *clear_confirm.read() {
+                div { class: "confirm-modal-backdrop",
+                    div { class: "confirm-modal", role: "dialog", aria_modal: "true",
+                        div { class: "confirm-modal-icon", "!" }
+                        div { class: "confirm-modal-copy",
+                            h3 { "Clear all entries?" }
+                            p { "This will permanently remove every tracked entry." }
+                        }
+                        div { class: "confirm-modal-actions",
+                            button {
+                                class: "btn btn-sm btn-outline",
+                                onclick: move |_| clear_confirm.set(false),
+                                "Cancel"
+                            }
+                            button {
+                                class: "btn btn-sm btn-danger",
+                                onclick: confirm_clear_entries,
+                                "Clear all"
                             }
                         }
                     }
