@@ -23,9 +23,11 @@ pub fn CompactTimer() -> Element {
                 });
                 *interval_handle.write() = Some(interval);
             }
-        } else if matches!(*state.timer.read(), TimerState::Idle) {
-            elapsed.set(0);
+        } else {
             *interval_handle.write() = None;
+            if matches!(*state.timer.read(), TimerState::Idle) {
+                elapsed.set(0);
+            }
         }
     });
 
@@ -85,6 +87,7 @@ pub fn CompactTimer() -> Element {
             if let TimerState::Stopped(entry) = state.timer.read().clone() {
                 spawn(async move {
                     if let Ok(entry) = bridge::resume_entry(entry.id).await {
+                        elapsed.set(0);
                         state.timer.set(TimerState::Running(entry));
                     }
                 });

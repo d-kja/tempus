@@ -137,19 +137,29 @@ pub fn update_entry_impl(
 pub fn resume_entry_impl(db: &Database, id: i64) -> Result<Entry, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
-    conn.execute(
-        "UPDATE entries SET end_time = datetime('now'), updated_at = datetime('now') WHERE end_time IS NULL AND id != ?1",
-        params![id],
-    ).map_err(|e| e.to_string())?;
+    let source: Entry = conn
+        .query_row(
+            "SELECT id, title, description, start_time, end_time, project_id, created_at, updated_at FROM entries WHERE id = ?1",
+            params![id],
+            |row| Entry::from_row(row),
+        )
+        .map_err(|e| format!("Entry not found: {}", e))?;
 
     conn.execute(
-        "UPDATE entries SET end_time = NULL, updated_at = datetime('now') WHERE id = ?1",
-        params![id],
+        "UPDATE entries SET end_time = datetime('now'), updated_at = datetime('now') WHERE end_time IS NULL",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO entries (title, description, start_time, project_id) VALUES (?1, ?2, datetime('now'), ?3)",
+        params![source.title, source.description, source.project_id],
     ).map_err(|e| e.to_string())?;
 
+    let new_id = conn.last_insert_rowid();
     conn.query_row(
         "SELECT id, title, description, start_time, end_time, project_id, created_at, updated_at FROM entries WHERE id = ?1",
-        params![id],
+        params![new_id],
         |row| Entry::from_row(row),
     ).map_err(|e| e.to_string())
 }
@@ -235,6 +245,24 @@ mod tests {
         start_entry_impl(&db, "Task", None, None).unwrap();
         let stopped = stop_entry_impl(&db).unwrap().unwrap();
         assert!(stopped.end_time.is_some());
+    }
+
+    #[test]
+    fn test_resume_creates_new_entry_with_same_information() {
+        let db = setup_db();
+        let project = crate::commands::projects::create_project_impl(&db, "Project").unwrap();
+        let source =
+            start_entry_impl(&db, "Task", Some("Details"), Some(project.id)).unwrap();
+        let stopped = stop_entry_impl(&db).unwrap().unwrap();
+        let resumed = resume_entry_impl(&db, source.id).unwrap();
+
+        assert_eq!(stopped.id, source.id);
+        assert!(stopped.end_time.is_some());
+        assert_ne!(resumed.id, source.id);
+        assert_eq!(resumed.title, source.title);
+        assert_eq!(resumed.description, source.description);
+        assert_eq!(resumed.project_id, source.project_id);
+        assert!(resumed.end_time.is_none());
     }
 
     #[test]
