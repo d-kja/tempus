@@ -4,7 +4,7 @@ A minimal, always-on-top time tracker built with **Tauri 2** + **Dioxus 0.7** (R
 
 Tracks work hours per-entry with project tagging, exports to Markdown, and stays out of your way.
 
-_**Important**: Don't use it, it's AI slop for my use-case._
+<img width="1282" height="auto" alt="image" src="https://github.com/user-attachments/assets/4731c2f9-7160-473d-af79-40a5af1ce14a" />
 
 ## Features
 
