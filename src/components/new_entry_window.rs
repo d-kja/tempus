@@ -7,6 +7,7 @@ pub fn NewEntryWindow() -> Element {
     let mut description = use_signal(String::new);
     let mut projects = use_signal(Vec::new);
     let mut selected_project = use_signal(|| None::<i64>);
+    let mut project_menu_open = use_signal(|| false);
 
     use_effect(move || {
         spawn(async move {
@@ -26,7 +27,6 @@ pub fn NewEntryWindow() -> Element {
                 .map(|p| p.name.clone())
         })
         .unwrap_or_else(|| "None".to_string());
-    let selected_project_value = selected_id.map(|id| id.to_string()).unwrap_or_default();
 
     rsx! {
         document::Link { rel: "stylesheet", href: asset!("/assets/app.css") }
@@ -52,21 +52,51 @@ pub fn NewEntryWindow() -> Element {
                         oninput: move |e| title.set(e.value())
                     }
                 }
-                label { class: "new-entry-field",
+                div { class: "new-entry-field",
                     span { class: "field-label", "Project" }
-                    div { class: "project-control field-control",
-                        span {
-                            class: if selected_id.is_some() { "field-value" } else { "field-value field-value-muted" },
-                            "{selected_project_name}"
-                        }
-                        span { class: "field-hint", "Choose a project" }
-                        select {
+                    div { class: "project-picker",
+                        button {
+                            r#type: "button",
+                            class: "project-control field-control",
                             aria_label: "Choose a project",
-                            value: selected_project_value,
-                            onchange: move |e| selected_project.set(e.value().parse::<i64>().ok()),
-                            option { value: "", "None" }
-                            for p in projects.read().iter() {
-                                option { value: "{p.id}", "{p.name}" }
+                            aria_expanded: "{project_menu_open}",
+                            onclick: move |_| {
+                                let open = { *project_menu_open.read() };
+                                project_menu_open.set(!open);
+                            },
+                            span {
+                                class: if selected_id.is_some() { "field-value" } else { "field-value field-value-muted" },
+                                "{selected_project_name}"
+                            }
+                            span { class: "field-hint", "Choose a project" }
+                            span { class: "project-chevron", "⌄" }
+                        }
+                        if *project_menu_open.read() {
+                            div { class: "project-menu", role: "listbox",
+                                button {
+                                    r#type: "button",
+                                    class: if selected_id.is_none() { "project-option project-option-active" } else { "project-option" },
+                                    role: "option",
+                                    aria_selected: "{selected_id.is_none()}",
+                                    onclick: move |_| {
+                                        selected_project.set(None);
+                                        project_menu_open.set(false);
+                                    },
+                                    span { "None" }
+                                }
+                                for p in projects.read().iter() {
+                                    button {
+                                        r#type: "button",
+                                        class: if selected_id == Some(p.id) { "project-option project-option-active" } else { "project-option" },
+                                        role: "option",
+                                        aria_selected: "{selected_id == Some(p.id)}",
+                                        onclick: { let pid = p.id; move |_| {
+                                            selected_project.set(Some(pid));
+                                            project_menu_open.set(false);
+                                        }},
+                                        span { "{p.name}" }
+                                    }
+                                }
                             }
                         }
                     }
