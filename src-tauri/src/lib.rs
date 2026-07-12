@@ -5,7 +5,7 @@ mod models;
 use crate::commands::{entries, projects, settings, export as export_mod};
 use db::Database;
 use std::collections::HashMap;
-use tauri::{Manager, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl};
+use tauri::{webview::PageLoadEvent, Manager, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl};
 
 #[tauri::command]
 fn start_entry(
@@ -110,13 +110,6 @@ fn pick_export_folder() -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-fn set_window_size(window: WebviewWindow, width: f64, height: f64) -> Result<(), String> {
-    window
-        .set_size(tauri::LogicalSize::new(width, height))
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 fn set_always_on_top(app: tauri::AppHandle, always: bool) -> Result<(), String> {
     if let Some(main) = app.get_webview_window("main") {
         main.set_always_on_top(always).map_err(|e| e.to_string())?;
@@ -147,20 +140,45 @@ fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn open_new_entry(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(existing) = app.get_webview_window("new-entry") {
+        let _ = existing.hide();
+        let _ = existing.set_min_size(Some(tauri::LogicalSize::new(520.0, 357.0)));
+        let _ = existing.set_max_size(Some(tauri::LogicalSize::new(520.0, 357.0)));
+        let _ = existing.set_size(tauri::LogicalSize::new(520.0, 357.0));
         let _ = existing.show();
         let _ = existing.set_focus();
         return Ok(());
     }
-    WebviewWindowBuilder::new(&app, "new-entry", WebviewUrl::App("/index.html?new-entry".into()))
+    let window = WebviewWindowBuilder::new(&app, "new-entry", WebviewUrl::App("/index.html?new-entry".into()))
         .title("New Entry")
-        .inner_size(360.0, 520.0)
+        .inner_size(520.0, 357.0)
+        .min_inner_size(520.0, 357.0)
+        .max_inner_size(520.0, 357.0)
         .decorations(false)
         .resizable(false)
         .transparent(true)
         .shadow(true)
         .always_on_top(true)
+        .on_page_load(|window, payload| {
+            if matches!(payload.event(), PageLoadEvent::Finished) {
+                let _ = window.set_min_size(Some(tauri::LogicalSize::new(520.0, 357.0)));
+                let _ = window.set_max_size(Some(tauri::LogicalSize::new(520.0, 357.0)));
+                let _ = window.set_size(tauri::LogicalSize::new(520.0, 357.0));
+            }
+        })
+        .visible(false)
         .build()
         .map_err(|e| e.to_string())?;
+    window
+        .set_min_size(Some(tauri::LogicalSize::new(520.0, 357.0)))
+        .map_err(|e| e.to_string())?;
+    window
+        .set_max_size(Some(tauri::LogicalSize::new(520.0, 357.0)))
+        .map_err(|e| e.to_string())?;
+    window
+        .set_size(tauri::LogicalSize::new(520.0, 357.0))
+        .map_err(|e| e.to_string())?;
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -236,7 +254,6 @@ pub fn run() {
             update_settings_db,
             export_markdown,
             pick_export_folder,
-            set_window_size,
             set_always_on_top,
             set_window_position,
             open_settings,
