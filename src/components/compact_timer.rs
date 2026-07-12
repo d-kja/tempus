@@ -52,6 +52,12 @@ pub fn CompactTimer() -> Element {
         });
     };
 
+    let on_settings = move |_| {
+        spawn(async move {
+            let _ = bridge::open_settings().await;
+        });
+    };
+
     let on_pause = {
         let mut state = state.clone();
         move |_| {
@@ -122,6 +128,12 @@ pub fn CompactTimer() -> Element {
                 } else {
                     div { id: "timer-pill", class: "timer-pill timer-pill-mini",
                         TimerDisplay { elapsed_seconds: elapsed }
+                        button {
+                            class: "timer-control timer-control-settings",
+                            onclick: on_settings,
+                            aria_label: "Open settings",
+                            "⚙"
+                        }
                         button {
                             class: "timer-state-action",
                             onclick: on_start,
