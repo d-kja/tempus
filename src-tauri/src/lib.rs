@@ -13,9 +13,10 @@ use tauri::{
 fn start_entry(
     db: State<Database>,
     title: String,
-    description: Option<String>,
+    description: String,
     project_id: Option<i64>,
 ) -> Result<crate::models::Entry, String> {
+    let description = (!description.trim().is_empty()).then_some(description);
     entries::start_entry_impl(&db, &title, description.as_deref(), project_id)
 }
 
@@ -44,7 +45,7 @@ fn update_entry(
     db: State<Database>,
     id: i64,
     title: String,
-    description: Option<String>,
+    description: String,
     project_id: Option<i64>,
     start_time: String,
     end_time: Option<String>,
@@ -53,7 +54,7 @@ fn update_entry(
         &db,
         id,
         &title,
-        description.as_deref(),
+        (!description.trim().is_empty()).then_some(description.as_str()),
         project_id,
         &start_time,
         end_time.as_deref(),

@@ -35,7 +35,12 @@ fn database_datetime(value: &str) -> Option<String> {
         return None;
     }
     let (date, time) = value.split_once(' ')?;
-    if date.len() != 10 || time.len() != 5 || date.as_bytes().get(4) != Some(&b'-') || date.as_bytes().get(7) != Some(&b'-') || time.as_bytes().get(2) != Some(&b':') {
+    if date.len() != 10
+        || time.len() != 5
+        || date.as_bytes().get(4) != Some(&b'-')
+        || date.as_bytes().get(7) != Some(&b'-')
+        || time.as_bytes().get(2) != Some(&b':')
+    {
         return None;
     }
     let month = date.get(5..7)?.parse::<u32>().ok()?;
@@ -150,7 +155,6 @@ pub fn EditEntryWindow() -> Element {
             error.set("Use YYYY-MM-DD and HH:MM for the end time.".into());
             return;
         }
-        let description_value = (!description_value.is_empty()).then_some(description_value);
         let project_id = *selected_project.read();
         spawn(async move {
             match bridge::update_entry(

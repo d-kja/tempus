@@ -31,8 +31,9 @@ pub fn export_markdown_impl(db: &Database, path: &str) -> Result<(), String> {
         let (start, end, title, desc, project) = row.map_err(|e| e.to_string())?;
         let date = start.chars().take(10).collect::<String>();
         let hour_span = format_hour_span(&start, end.as_deref());
-        let desc_str = desc.unwrap_or_default();
-        let proj_str = project.unwrap_or_default();
+        let desc_str = escape_markdown_cell(&desc.unwrap_or_default());
+        let proj_str = escape_markdown_cell(&project.unwrap_or_default());
+        let title = escape_markdown_cell(&title);
         content.push_str(&format!(
             "| {} | {} | {} | {} | {} |\n",
             date, hour_span, title, desc_str, proj_str
@@ -41,6 +42,10 @@ pub fn export_markdown_impl(db: &Database, path: &str) -> Result<(), String> {
 
     fs::write(path, content).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+fn escape_markdown_cell(value: &str) -> String {
+    value.replace('|', "\\|").replace(['\n', '\r'], " ")
 }
 
 fn format_hour_span(start: &str, end: Option<&str>) -> String {
@@ -95,6 +100,27 @@ mod tests {
 
         let content = fs::read_to_string(path).unwrap();
         assert!(content.contains("MyProject"));
+        let _ = fs::remove_file(tmp);
+    }
+
+    #[test]
+    fn test_export_includes_description() {
+        let db = setup_db();
+        start_entry_impl(
+            &db,
+            "Documented task",
+            Some("Prepare the handoff notes"),
+            None,
+        )
+        .unwrap();
+        stop_entry_impl(&db).unwrap();
+
+        let tmp = std::env::temp_dir().join("hours_export_description_test.md");
+        let path = tmp.to_str().unwrap();
+        export_markdown_impl(&db, path).unwrap();
+
+        let content = fs::read_to_string(path).unwrap();
+        assert!(content.contains("Prepare the handoff notes"));
         let _ = fs::remove_file(tmp);
     }
 }

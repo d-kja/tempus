@@ -29,7 +29,7 @@ pub struct Project {
 #[derive(Serialize)]
 struct StartEntryArgs {
     title: String,
-    description: Option<String>,
+    description: String,
     #[serde(rename = "projectId")]
     project_id: Option<i64>,
 }
@@ -46,7 +46,7 @@ fn from_value<T: for<'de> Deserialize<'de>>(val: JsValue) -> Result<T, String> {
 
 pub async fn start_entry(
     title: String,
-    description: Option<String>,
+    description: String,
     project_id: Option<i64>,
 ) -> Result<Entry, String> {
     let args = StartEntryArgs {
@@ -101,7 +101,7 @@ pub async fn delete_entry(id: i64) -> Result<(), String> {
 pub async fn update_entry(
     id: i64,
     title: String,
-    description: Option<String>,
+    description: String,
     project_id: Option<i64>,
     start_time: String,
     end_time: Option<String>,

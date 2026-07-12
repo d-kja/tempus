@@ -126,10 +126,9 @@ pub fn NewEntryWindow() -> Element {
                     onclick: move |_| {
                         let t = title.read().clone();
                         let d = description.read().trim().to_string();
-                        let desc = (!d.is_empty()).then_some(d);
                         let pid = *selected_project.read();
                         spawn(async move {
-                            let _ = bridge::start_entry(t, desc, pid).await;
+                            let _ = bridge::start_entry(t, d, pid).await;
                             let _ = bridge::close_current_window().await;
                         });
                     },

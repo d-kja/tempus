@@ -16,13 +16,13 @@ pub fn start_entry_impl(
     };
 
     conn.execute(
-        "UPDATE entries SET end_time = datetime('now'), updated_at = datetime('now') WHERE end_time IS NULL",
+        "UPDATE entries SET end_time = datetime('now', 'localtime'), updated_at = datetime('now', 'localtime') WHERE end_time IS NULL",
         [],
     )
     .map_err(|e| e.to_string())?;
 
     conn.execute(
-        "INSERT INTO entries (title, description, start_time, project_id) VALUES (?1, ?2, datetime('now'), ?3)",
+        "INSERT INTO entries (title, description, start_time, project_id) VALUES (?1, ?2, datetime('now', 'localtime'), ?3)",
         params![title, description, project_id],
     )
     .map_err(|e| e.to_string())?;
@@ -47,7 +47,7 @@ pub fn stop_entry_impl(db: &Database) -> Result<Option<Entry>, String> {
 
     if let Some(active_id) = active {
         conn.execute(
-            "UPDATE entries SET end_time = datetime('now'), updated_at = datetime('now') WHERE id = ?1",
+            "UPDATE entries SET end_time = datetime('now', 'localtime'), updated_at = datetime('now', 'localtime') WHERE id = ?1",
             params![active_id],
         )
         .map_err(|e| e.to_string())?;
@@ -116,7 +116,7 @@ pub fn update_entry_impl(
         .map_err(|e| format!("Entry not found: {}", e))?;
 
     conn.execute(
-        "UPDATE entries SET title = ?1, description = ?2, project_id = ?3, start_time = ?4, end_time = ?5, updated_at = datetime('now') WHERE id = ?6",
+        "UPDATE entries SET title = ?1, description = ?2, project_id = ?3, start_time = ?4, end_time = ?5, updated_at = datetime('now', 'localtime') WHERE id = ?6",
         params![title, description, project_id, start_time, end_time, id],
     )
     .map_err(|e| e.to_string())?;
@@ -141,13 +141,13 @@ pub fn resume_entry_impl(db: &Database, id: i64) -> Result<Entry, String> {
         .map_err(|e| format!("Entry not found: {}", e))?;
 
     conn.execute(
-        "UPDATE entries SET end_time = datetime('now'), updated_at = datetime('now') WHERE end_time IS NULL",
+        "UPDATE entries SET end_time = datetime('now', 'localtime'), updated_at = datetime('now', 'localtime') WHERE end_time IS NULL",
         [],
     )
     .map_err(|e| e.to_string())?;
 
     conn.execute(
-        "INSERT INTO entries (title, description, start_time, project_id) VALUES (?1, ?2, datetime('now'), ?3)",
+        "INSERT INTO entries (title, description, start_time, project_id) VALUES (?1, ?2, datetime('now', 'localtime'), ?3)",
         params![source.title, source.description, source.project_id],
     ).map_err(|e| e.to_string())?;
 

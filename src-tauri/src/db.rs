@@ -23,7 +23,7 @@ impl Database {
             "CREATE TABLE IF NOT EXISTS projects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
-                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
             );
             CREATE TABLE IF NOT EXISTS entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,8 +32,8 @@ impl Database {
                 start_time TEXT NOT NULL,
                 end_time TEXT,
                 project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
-                created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
             );
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -45,6 +45,7 @@ impl Database {
             INSERT OR IGNORE INTO settings (key, value) VALUES ('export_path', '');
             "
         )?;
+
         Ok(())
     }
 }
