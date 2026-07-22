@@ -27,6 +27,9 @@ pub fn export_markdown_impl(db: &Database, path: &str) -> Result<(), String> {
     let mut content = String::from("| Date | Hour Span | Title | Description | Project |\n");
     content.push_str("|------|-----------|-------|-------------|--------|\n");
 
+    let mut total_seconds: i64 = 0;
+    let mut completed_count = 0;
+
     for row in rows {
         let (start, end, title, desc, project) = row.map_err(|e| e.to_string())?;
         let date = start.chars().take(10).collect::<String>();
@@ -38,10 +41,51 @@ pub fn export_markdown_impl(db: &Database, path: &str) -> Result<(), String> {
             "| {} | {} | {} | {} | {} |\n",
             date, hour_span, title, desc_str, proj_str
         ));
+
+        if let Some(ref end_time) = end {
+            if let Ok(duration) = compute_duration_seconds(&start, end_time) {
+                total_seconds += duration;
+                completed_count += 1;
+            }
+        }
+    }
+
+    if completed_count > 0 {
+        let hours = total_seconds / 3600;
+        let minutes = (total_seconds % 3600) / 60;
+        content.push_str(&format!("\n**Total:** {}h {}m\n", hours, minutes));
     }
 
     fs::write(path, content).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+fn parse_to_seconds(s: &str) -> Result<i64, String> {
+    if s.len() < 19 {
+        return Err("invalid timestamp format".into());
+    }
+    let year: i64 = s[0..4].parse().map_err(|_| "invalid year")?;
+    let month: i64 = s[5..7].parse().map_err(|_| "invalid month")?;
+    let day: i64 = s[8..10].parse().map_err(|_| "invalid day")?;
+    let hour: i64 = s[11..13].parse().map_err(|_| "invalid hour")?;
+    let minute: i64 = s[14..16].parse().map_err(|_| "invalid minute")?;
+    let second: i64 = s[17..19].parse().map_err(|_| "invalid second")?;
+
+    let days = {
+        let m = month;
+        let y = if m <= 2 { year - 1 } else { year };
+        let m = if m <= 2 { m + 12 } else { m };
+        let a = y / 100;
+        let b = 2 - a + a / 4;
+        (36525 * y) / 100 + (306001 * (m + 1)) / 10000 + day + b - 694065
+    };
+    Ok(days * 86400 + hour * 3600 + minute * 60 + second)
+}
+
+fn compute_duration_seconds(start: &str, end: &str) -> Result<i64, String> {
+    let start_secs = parse_to_seconds(start)?;
+    let end_secs = parse_to_seconds(end)?;
+    Ok(end_secs - start_secs)
 }
 
 fn escape_markdown_cell(value: &str) -> String {
@@ -82,6 +126,7 @@ mod tests {
         let content = fs::read_to_string(path).unwrap();
         assert!(content.contains("Coding"));
         assert!(content.contains("| Date | Hour Span |"));
+        assert!(content.contains("**Total:**"));
         let _ = fs::remove_file(tmp);
     }
 
