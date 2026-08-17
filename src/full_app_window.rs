@@ -20,6 +20,7 @@ pub fn FullAppWindow() -> Element {
     let mut project_name = use_signal(String::new);
     let mut export_path = use_signal(String::new);
     let mut toggl_token = use_signal(String::new);
+    let mut toggl_project = use_signal(String::new);
     let mut syncing = use_signal(|| false);
     let mut status = use_signal(String::new);
     let mut filter_project = use_signal(|| None::<i64>);
@@ -45,6 +46,7 @@ pub fn FullAppWindow() -> Element {
                 let path = s.get("export_path").cloned().unwrap_or_default();
                 export_path.set(path);
                 toggl_token.set(s.get("toggl_api_token").cloned().unwrap_or_default());
+                toggl_project.set(s.get("toggl_project").cloned().unwrap_or_default());
                 settings_sig.set(s);
             }
         });
@@ -166,8 +168,9 @@ pub fn FullAppWindow() -> Element {
         syncing.set(true);
         status.set("Syncing with Toggl...".into());
         let token = toggl_token.read().clone();
+        let project = toggl_project.read().clone();
         spawn(async move {
-            match bridge::sync_toggl(token).await {
+            match bridge::sync_toggl(token, project).await {
                 Ok(result) => {
                     if result.created == 0 {
                         status.set("Nothing new to sync.".into());
@@ -188,6 +191,17 @@ pub fn FullAppWindow() -> Element {
         toggl_token.set(token.clone());
         let mut s = settings_sig.read().clone();
         s.insert("toggl_api_token".into(), token);
+        settings_sig.set(s.clone());
+        spawn(async move {
+            let _ = bridge::update_settings(s).await;
+        });
+    };
+
+    let on_toggl_project = move |e: Event<FormData>| {
+        let project = e.value();
+        toggl_project.set(project.clone());
+        let mut s = settings_sig.read().clone();
+        s.insert("toggl_project".into(), project);
         settings_sig.set(s.clone());
         spawn(async move {
             let _ = bridge::update_settings(s).await;
@@ -363,12 +377,17 @@ pub fn FullAppWindow() -> Element {
                             button {
                                 class: "btn btn-primary",
                                 onclick: on_sync_toggl,
-                                disabled: toggl_token.read().trim().is_empty() || *syncing.read(),
+                                disabled: toggl_token.read().trim().is_empty()
+                                    || toggl_project.read().trim().is_empty()
+                                    || *syncing.read(),
                                 if *syncing.read() {
                                     "Syncing..."
                                 } else {
                                     "Sync to Toggl"
                                 }
+                            }
+                            p { class: "helper-text",
+                                "Sends completed entries to the existing Toggl project set in Settings. Tempus does not create Toggl projects."
                             }
                             button {
                                 class: "btn btn-primary",
@@ -410,6 +429,17 @@ pub fn FullAppWindow() -> Element {
                             }
                             p { class: "helper-text",
                                 "Personal API Token from Toggl Track → Profile Settings (bottom of the page). Paste the token only — Tempus adds :api_token for you."
+                            }
+                            input {
+                                class: "input",
+                                r#type: "text",
+                                placeholder: "https://track.toggl.com/…/projects/…",
+                                value: "{toggl_project}",
+                                autocomplete: "off",
+                                oninput: on_toggl_project
+                            }
+                            p { class: "helper-text",
+                                "Paste the Toggl project URL or ID (for example FCR → Manutenção App). Tempus never creates Toggl projects — time is sent only to an existing one."
                             }
                         }
                         div { class: "page-filler" }

@@ -118,8 +118,9 @@ fn export_markdown(db: State<Database>, path: String) -> Result<(), String> {
 fn sync_toggl(
     db: State<Database>,
     api_token: Option<String>,
+    toggl_project: Option<String>,
 ) -> Result<toggl_mod::TogglSyncResult, String> {
-    toggl_mod::sync_toggl_impl(&db, api_token)
+    toggl_mod::sync_toggl_impl(&db, api_token, toggl_project)
 }
 
 #[tauri::command]

@@ -46,6 +46,7 @@ impl Database {
             INSERT OR IGNORE INTO settings (key, value) VALUES ('window_y', '');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('export_path', '');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('toggl_api_token', '');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('toggl_project', '');
             ",
         )?;
 
@@ -131,6 +132,14 @@ mod tests {
             )
             .unwrap();
         assert_eq!(token, "");
+        let project: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'toggl_project'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(project, "");
     }
 
     #[test]

@@ -1,8 +1,8 @@
 use crate::commands::settings::{get_settings_impl, update_settings_impl};
 use crate::db::Database;
 use crate::toggl::{
-    duration_secs, normalize_api_token, sql_datetime_to_rfc3339, toggl_description, NewTimeEntry,
-    TogglApi, TogglClient, TogglProject,
+    duration_secs, normalize_api_token, parse_toggl_project_ref, sql_datetime_to_rfc3339,
+    toggl_description, NewTimeEntry, TogglApi, TogglClient, TogglProject, TogglProjectRef,
 };
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
@@ -33,6 +33,7 @@ struct LocalProject {
 pub fn sync_toggl_impl(
     db: &Database,
     api_token: Option<String>,
+    toggl_project: Option<String>,
 ) -> Result<TogglSyncResult, String> {
     let settings = get_settings_impl(db)?;
     let raw = api_token
@@ -43,25 +44,40 @@ pub fn sync_toggl_impl(
     if token.is_empty() {
         return Err("Add your Toggl API token in Settings first.".into());
     }
+    let project = toggl_project
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| settings.get("toggl_project").cloned())
+        .unwrap_or_default();
 
     let mut persisted = HashMap::new();
     persisted.insert("toggl_api_token".into(), token.clone());
+    persisted.insert("toggl_project".into(), project.clone());
     update_settings_impl(db, &persisted)?;
 
     let client = TogglClient::new(token)?;
-    sync_with_api(db, &client)
+    sync_with_api(db, &client, &parse_toggl_project_ref(&project))
 }
 
-pub fn sync_with_api(db: &Database, api: &dyn TogglApi) -> Result<TogglSyncResult, String> {
+pub fn sync_with_api(
+    db: &Database,
+    api: &dyn TogglApi,
+    project_ref: &TogglProjectRef,
+) -> Result<TogglSyncResult, String> {
     let user = api.get_me()?;
-    let workspace_id = user.default_workspace_id;
-    let mut remote_projects = api.list_projects(workspace_id)?;
+    let workspace_id = project_ref
+        .workspace_id
+        .unwrap_or(user.default_workspace_id);
+    let remote_projects = if project_ref.project_id.is_some() {
+        Vec::new()
+    } else {
+        api.list_projects(workspace_id)?
+    };
     let mut local_projects = load_projects(db)?;
     let unsynced = load_unsynced_entries(db)?;
+    let global_project_id = resolve_configured_project(project_ref, &remote_projects)?;
 
     let mut created = 0;
     let mut skipped = 0;
-    let mut projects_created = 0;
 
     for entry in unsynced {
         let duration = match duration_secs(&entry.start_time, &entry.end_time) {
@@ -72,15 +88,12 @@ pub fn sync_with_api(db: &Database, api: &dyn TogglApi) -> Result<TogglSyncResul
             }
         };
 
-        let project_id = resolve_project_id(
-            db,
-            api,
-            workspace_id,
-            entry.project_id,
-            &mut local_projects,
-            &mut remote_projects,
-            &mut projects_created,
-        )?;
+        let project_id = match global_project_id {
+            Some(id) => Some(id),
+            None => {
+                match_existing_project(db, entry.project_id, &mut local_projects, &remote_projects)?
+            }
+        };
 
         let payload = NewTimeEntry {
             description: toggl_description(&entry.title, entry.description.as_deref()),
@@ -97,18 +110,34 @@ pub fn sync_with_api(db: &Database, api: &dyn TogglApi) -> Result<TogglSyncResul
     Ok(TogglSyncResult {
         created,
         skipped,
-        projects_created,
+        projects_created: 0,
     })
 }
 
-fn resolve_project_id(
+fn resolve_configured_project(
+    project_ref: &TogglProjectRef,
+    remote_projects: &[TogglProject],
+) -> Result<Option<i64>, String> {
+    if let Some(project_id) = project_ref.project_id {
+        return Ok(Some(project_id));
+    }
+    let Some(name) = project_ref.name.as_deref() else {
+        return Ok(None);
+    };
+    find_remote_project(remote_projects, name)
+        .map(|project| Some(project.id))
+        .ok_or_else(|| {
+            format!(
+                "No Toggl project named \"{name}\". Paste the project URL or ID in Settings. Tempus does not create Toggl projects."
+            )
+        })
+}
+
+fn match_existing_project(
     db: &Database,
-    api: &dyn TogglApi,
-    workspace_id: i64,
     local_project_id: Option<i64>,
     local_projects: &mut [LocalProject],
-    remote_projects: &mut Vec<TogglProject>,
-    projects_created: &mut u32,
+    remote_projects: &[TogglProject],
 ) -> Result<Option<i64>, String> {
     let Some(local_project_id) = local_project_id else {
         return Ok(None);
@@ -125,22 +154,21 @@ fn resolve_project_id(
     }
 
     let name = local_projects[index].name.clone();
-    if let Some(existing) = remote_projects
-        .iter()
-        .find(|project| project.name.eq_ignore_ascii_case(&name))
-    {
-        let toggl_id = existing.id;
-        save_project_toggl_id(db, local_project_id, toggl_id)?;
-        local_projects[index].toggl_id = Some(toggl_id);
-        return Ok(Some(toggl_id));
-    }
+    let Some(existing) = find_remote_project(remote_projects, &name) else {
+        return Err(format!(
+            "No Toggl project named \"{name}\". Paste the Toggl project URL or ID in Settings. Tempus does not create Toggl projects."
+        ));
+    };
+    save_project_toggl_id(db, local_project_id, existing.id)?;
+    local_projects[index].toggl_id = Some(existing.id);
+    Ok(Some(existing.id))
+}
 
-    let created = api.create_project(workspace_id, &name)?;
-    save_project_toggl_id(db, local_project_id, created.id)?;
-    local_projects[index].toggl_id = Some(created.id);
-    remote_projects.push(created.clone());
-    *projects_created += 1;
-    Ok(Some(created.id))
+fn find_remote_project<'a>(projects: &'a [TogglProject], name: &str) -> Option<&'a TogglProject> {
+    let needle = name.trim().to_lowercase();
+    projects
+        .iter()
+        .find(|project| project.name.trim().to_lowercase() == needle)
 }
 
 fn load_projects(db: &Database) -> Result<Vec<LocalProject>, String> {
@@ -214,7 +242,7 @@ mod tests {
     use super::*;
     use crate::commands::entries::{start_entry_impl, stop_entry_impl, update_entry_impl};
     use crate::commands::projects::create_project_impl;
-    use crate::toggl::{TogglTimeEntry, TogglUser};
+    use crate::toggl::{TogglProjectRef, TogglTimeEntry, TogglUser};
     use rusqlite::Connection;
     use std::sync::Mutex;
 
@@ -295,15 +323,6 @@ mod tests {
             Ok(self.projects.lock().unwrap().clone())
         }
 
-        fn create_project(&self, _workspace_id: i64, name: &str) -> Result<TogglProject, String> {
-            let project = TogglProject {
-                id: self.next_id(),
-                name: name.to_string(),
-            };
-            self.projects.lock().unwrap().push(project.clone());
-            Ok(project)
-        }
-
         fn create_time_entry(
             &self,
             _workspace_id: i64,
@@ -317,7 +336,7 @@ mod tests {
     #[test]
     fn test_sync_requires_api_token() {
         let db = setup_db();
-        let error = sync_toggl_impl(&db, None).unwrap_err();
+        let error = sync_toggl_impl(&db, None, None).unwrap_err();
         assert!(error.contains("API token"));
     }
 
@@ -334,7 +353,7 @@ mod tests {
         );
 
         let api = MockToggl::new();
-        let result = sync_with_api(&db, &api).unwrap();
+        let result = sync_with_api(&db, &api, &TogglProjectRef::default()).unwrap();
         assert_eq!(result.created, 1);
         assert_eq!(result.skipped, 0);
 
@@ -361,10 +380,10 @@ mod tests {
         start_entry_impl(&db, "Still running", None, None).unwrap();
 
         let api = MockToggl::new();
-        let first = sync_with_api(&db, &api).unwrap();
+        let first = sync_with_api(&db, &api, &TogglProjectRef::default()).unwrap();
         assert_eq!(first.created, 1);
 
-        let second = sync_with_api(&db, &api).unwrap();
+        let second = sync_with_api(&db, &api, &TogglProjectRef::default()).unwrap();
         assert_eq!(second.created, 0);
         assert_eq!(api.entries.lock().unwrap().len(), 1);
     }
@@ -386,7 +405,7 @@ mod tests {
             id: 55,
             name: "tempus".into(),
         }]);
-        let result = sync_with_api(&db, &api).unwrap();
+        let result = sync_with_api(&db, &api, &TogglProjectRef::default()).unwrap();
         assert_eq!(result.created, 1);
         assert_eq!(result.projects_created, 0);
         assert_eq!(api.entries.lock().unwrap()[0].project_id, Some(55));
@@ -394,7 +413,7 @@ mod tests {
     }
 
     #[test]
-    fn test_sync_creates_missing_toggl_project() {
+    fn test_sync_does_not_create_missing_toggl_project() {
         let db = setup_db();
         let project = create_project_impl(&db, "Hours").unwrap();
         complete_entry(
@@ -407,17 +426,94 @@ mod tests {
         );
 
         let api = MockToggl::new();
-        let result = sync_with_api(&db, &api).unwrap();
-        assert_eq!(result.created, 1);
-        assert_eq!(result.projects_created, 1);
+        let error = sync_with_api(&db, &api, &TogglProjectRef::default()).unwrap_err();
+        assert!(error.contains("does not create Toggl projects"));
+        assert!(api.projects.lock().unwrap().is_empty());
+        assert!(api.entries.lock().unwrap().is_empty());
+    }
 
-        let remote_projects = api.projects.lock().unwrap();
-        assert_eq!(remote_projects.len(), 1);
-        assert_eq!(remote_projects[0].name, "Hours");
-        assert_eq!(
-            api.entries.lock().unwrap()[0].project_id,
-            Some(remote_projects[0].id)
+    #[test]
+    fn test_sync_uses_configured_toggl_project_for_all_entries() {
+        let db = setup_db();
+        let project = create_project_impl(&db, "Hours").unwrap();
+        complete_entry(
+            &db,
+            "One",
+            None,
+            Some(project.id),
+            "2026-08-17 10:00:00",
+            "2026-08-17 11:00:00",
         );
+        complete_entry(
+            &db,
+            "Two",
+            None,
+            None,
+            "2026-08-17 12:00:00",
+            "2026-08-17 13:00:00",
+        );
+
+        let api = MockToggl::new();
+        let result = sync_with_api(
+            &db,
+            &api,
+            &TogglProjectRef {
+                workspace_id: Some(21598401),
+                project_id: Some(221432394),
+                name: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(result.created, 2);
+        assert_eq!(result.projects_created, 0);
+        assert!(api.projects.lock().unwrap().is_empty());
+
+        let entries = api.entries.lock().unwrap();
+        assert_eq!(entries[0].project_id, Some(221432394));
+        assert_eq!(entries[1].project_id, Some(221432394));
+    }
+
+    #[test]
+    fn test_sync_uses_configured_toggl_project_name_for_all_entries() {
+        let db = setup_db();
+        let project = create_project_impl(&db, "Hours").unwrap();
+        complete_entry(
+            &db,
+            "One",
+            None,
+            Some(project.id),
+            "2026-08-17 10:00:00",
+            "2026-08-17 11:00:00",
+        );
+        complete_entry(
+            &db,
+            "Two",
+            None,
+            None,
+            "2026-08-17 12:00:00",
+            "2026-08-17 13:00:00",
+        );
+
+        let api = MockToggl::with_projects(vec![TogglProject {
+            id: 221432394,
+            name: "FCR → Manutenção App".into(),
+        }]);
+        let result = sync_with_api(
+            &db,
+            &api,
+            &TogglProjectRef {
+                workspace_id: Some(21598401),
+                project_id: None,
+                name: Some("FCR → Manutenção App".into()),
+            },
+        )
+        .unwrap();
+        assert_eq!(result.created, 2);
+        assert_eq!(result.projects_created, 0);
+
+        let entries = api.entries.lock().unwrap();
+        assert_eq!(entries[0].project_id, Some(221432394));
+        assert_eq!(entries[1].project_id, Some(221432394));
     }
 
     #[test]
@@ -441,15 +537,18 @@ mod tests {
             "2026-08-17 13:00:00",
         );
 
-        let api = MockToggl::new();
-        let result = sync_with_api(&db, &api).unwrap();
+        let api = MockToggl::with_projects(vec![TogglProject {
+            id: 88,
+            name: "Hours".into(),
+        }]);
+        let result = sync_with_api(&db, &api, &TogglProjectRef::default()).unwrap();
         assert_eq!(result.created, 2);
-        assert_eq!(result.projects_created, 1);
+        assert_eq!(result.projects_created, 0);
         assert_eq!(api.projects.lock().unwrap().len(), 1);
 
         let entries = api.entries.lock().unwrap();
-        assert_eq!(entries[0].project_id, entries[1].project_id);
-        assert!(entries[0].project_id.is_some());
+        assert_eq!(entries[0].project_id, Some(88));
+        assert_eq!(entries[1].project_id, Some(88));
     }
 
     #[test]
@@ -466,7 +565,7 @@ mod tests {
 
         let api = MockToggl::new();
         *api.fail.lock().unwrap() = Some("Invalid Toggl API token.".into());
-        let error = sync_with_api(&db, &api).unwrap_err();
+        let error = sync_with_api(&db, &api, &TogglProjectRef::default()).unwrap_err();
         assert_eq!(error, "Invalid Toggl API token.");
     }
 
@@ -483,8 +582,11 @@ mod tests {
             "2026-08-17 11:00:00",
         );
 
-        let api = MockToggl::new();
-        sync_with_api(&db, &api).unwrap();
+        let api = MockToggl::with_projects(vec![TogglProject {
+            id: 88,
+            name: "Hours".into(),
+        }]);
+        sync_with_api(&db, &api, &TogglProjectRef::default()).unwrap();
 
         let conn = db.conn.lock().unwrap();
         let entry_toggl_id: Option<i64> = conn
