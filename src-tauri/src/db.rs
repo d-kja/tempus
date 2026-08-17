@@ -1,6 +1,6 @@
 use rusqlite::Connection;
-use std::sync::Mutex;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 pub struct Database {
     pub conn: Mutex<Connection>,
@@ -23,6 +23,7 @@ impl Database {
             "CREATE TABLE IF NOT EXISTS projects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
+                toggl_id INTEGER,
                 created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
             );
             CREATE TABLE IF NOT EXISTS entries (
@@ -32,6 +33,7 @@ impl Database {
                 start_time TEXT NOT NULL,
                 end_time TEXT,
                 project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+                toggl_id INTEGER,
                 created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
             );
@@ -43,11 +45,46 @@ impl Database {
             INSERT OR IGNORE INTO settings (key, value) VALUES ('window_x', '');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('window_y', '');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('export_path', '');
-            "
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('toggl_api_token', '');
+            ",
         )?;
+
+        add_column_if_missing(conn, "projects", "toggl_id", "INTEGER")?;
+        add_column_if_missing(conn, "entries", "toggl_id", "INTEGER")?;
 
         Ok(())
     }
+}
+
+fn add_column_if_missing(
+    conn: &Connection,
+    table: &str,
+    column: &str,
+    spec: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if column_exists(conn, table, column)? {
+        return Ok(());
+    }
+    conn.execute(
+        &format!("ALTER TABLE {table} ADD COLUMN {column} {spec}"),
+        [],
+    )?;
+    Ok(())
+}
+
+fn column_exists(
+    conn: &Connection,
+    table: &str,
+    column: &str,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+    let names = stmt.query_map([], |row| row.get::<_, String>(1))?;
+    for name in names {
+        if name? == column {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 #[cfg(test)]
@@ -78,6 +115,22 @@ mod tests {
         assert!(tables.contains(&"entries".to_string()));
         assert!(tables.contains(&"projects".to_string()));
         assert!(tables.contains(&"settings".to_string()));
+    }
+
+    #[test]
+    fn test_migration_adds_toggl_columns_and_token_setting() {
+        let db = in_memory_db();
+        let conn = db.conn.lock().unwrap();
+        assert!(super::column_exists(&conn, "entries", "toggl_id").unwrap());
+        assert!(super::column_exists(&conn, "projects", "toggl_id").unwrap());
+        let token: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'toggl_api_token'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(token, "");
     }
 
     #[test]

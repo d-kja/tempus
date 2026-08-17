@@ -5,6 +5,9 @@ use wasm_bindgen::prelude::*;
 extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
     async fn invoke(cmd: &str, args: JsValue) -> JsValue;
+
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"], js_name = "invoke", catch)]
+    async fn invoke_fallible(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -42,6 +45,19 @@ struct GetEntriesArgs {
 
 fn from_value<T: for<'de> Deserialize<'de>>(val: JsValue) -> Result<T, String> {
     serde_wasm_bindgen::from_value(val).map_err(|e| format!("deserialize: {}", e))
+}
+
+fn js_error_to_string(err: JsValue) -> String {
+    if let Some(message) = err.as_string() {
+        return message;
+    }
+    if let Ok(value) = serde_wasm_bindgen::from_value::<serde_json::Value>(err) {
+        if let Some(message) = value.get("message").and_then(|item| item.as_str()) {
+            return message.to_string();
+        }
+        return value.to_string();
+    }
+    "Toggl sync failed.".into()
 }
 
 pub async fn start_entry(
@@ -162,6 +178,21 @@ pub async fn export_markdown(path: String) -> Result<(), String> {
     let wrapper = serde_json::json!({ "path": path });
     let args = serde_wasm_bindgen::to_value(&wrapper).unwrap();
     from_value::<()>(invoke("export_markdown", args).await)
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TogglSyncResult {
+    pub created: u32,
+    pub skipped: u32,
+    pub projects_created: u32,
+}
+
+pub async fn sync_toggl() -> Result<TogglSyncResult, String> {
+    let args = serde_wasm_bindgen::to_value(&()).unwrap();
+    match invoke_fallible("sync_toggl", args).await {
+        Ok(val) => from_value(val),
+        Err(err) => Err(js_error_to_string(err)),
+    }
 }
 
 pub async fn pick_export_folder() -> Result<Option<String>, String> {

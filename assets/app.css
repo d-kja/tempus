@@ -243,6 +243,12 @@ input { font-family: inherit; font-size: inherit; color: inherit; background: no
   color: var(--primary-text);
 }
 .btn-primary:hover { background: white; }
+.btn:disabled,
+.btn:disabled:hover {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
 .btn-outline {
   border: 1px solid var(--border);
   color: var(--text-2);
