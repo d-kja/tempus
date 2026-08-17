@@ -195,8 +195,15 @@ pub struct TogglSyncResult {
     pub projects_created: u32,
 }
 
-pub async fn sync_toggl(api_token: String) -> Result<TogglSyncResult, String> {
-    let args = serde_wasm_bindgen::to_value(&serde_json::json!({ "apiToken": api_token })).unwrap();
+pub async fn sync_toggl(
+    api_token: String,
+    toggl_project: String,
+) -> Result<TogglSyncResult, String> {
+    let args = serde_wasm_bindgen::to_value(&serde_json::json!({
+        "apiToken": api_token,
+        "togglProject": toggl_project,
+    }))
+    .unwrap();
     match invoke_fallible("sync_toggl", args).await {
         Ok(val) => from_value(val),
         Err(err) => Err(js_error_to_string(err)),

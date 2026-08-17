@@ -33,7 +33,6 @@ pub struct NewTimeEntry {
 pub trait TogglApi {
     fn get_me(&self) -> Result<TogglUser, String>;
     fn list_projects(&self, workspace_id: i64) -> Result<Vec<TogglProject>, String>;
-    fn create_project(&self, workspace_id: i64, name: &str) -> Result<TogglProject, String>;
     fn create_time_entry(
         &self,
         workspace_id: i64,
@@ -132,26 +131,6 @@ impl TogglApi for TogglClient {
             .collect())
     }
 
-    fn create_project(&self, workspace_id: i64, name: &str) -> Result<TogglProject, String> {
-        let body = self.request(
-            "POST",
-            &format!("/workspaces/{workspace_id}/projects"),
-            Some(json!({
-                "name": name,
-                "active": true,
-                "is_private": true,
-            })),
-        )?;
-        let parsed: ProjectResponse = serde_json::from_str(&body)
-            .map_err(|e| format!("invalid Toggl create project response: {e}"))?;
-        // Toggl's auth layer is eventually consistent after creating entities.
-        std::thread::sleep(Duration::from_secs(2));
-        Ok(TogglProject {
-            id: parsed.id,
-            name: parsed.name,
-        })
-    }
-
     fn create_time_entry(
         &self,
         workspace_id: i64,
@@ -223,6 +202,50 @@ pub fn normalize_api_token(raw: &str) -> String {
     token
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TogglProjectRef {
+    pub workspace_id: Option<i64>,
+    pub project_id: Option<i64>,
+    pub name: Option<String>,
+}
+
+pub fn parse_toggl_project_ref(raw: &str) -> TogglProjectRef {
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return TogglProjectRef::default();
+    }
+    if let Ok(id) = raw.parse::<i64>() {
+        if id > 0 {
+            return TogglProjectRef {
+                project_id: Some(id),
+                ..TogglProjectRef::default()
+            };
+        }
+    }
+    if let Some(index) = raw.find("/projects/") {
+        let after = &raw[index + "/projects/".len()..];
+        let id_str: String = after.chars().take_while(|c| c.is_ascii_digit()).collect();
+        let project_id = id_str.parse::<i64>().ok().filter(|id| *id > 0);
+        let before = &raw[..index];
+        let workspace_id = before
+            .rsplit('/')
+            .next()
+            .and_then(|segment| segment.parse::<i64>().ok())
+            .filter(|id| *id > 0);
+        if project_id.is_some() {
+            return TogglProjectRef {
+                workspace_id,
+                project_id,
+                name: None,
+            };
+        }
+    }
+    TogglProjectRef {
+        name: Some(raw.to_string()),
+        ..TogglProjectRef::default()
+    }
+}
+
 pub fn toggl_description(title: &str, description: Option<&str>) -> String {
     match description.map(str::trim).filter(|value| !value.is_empty()) {
         Some(details) => format!("{title} - {details}"),
@@ -286,13 +309,20 @@ fn map_toggl_error(status: u16, body: &str) -> String {
         }
         403 => {
             let detail = if trimmed.is_empty() {
-                String::new()
+                "Toggl denied this request (403).".into()
             } else {
-                format!(" Toggl said: {trimmed}.")
+                format!("Toggl API error (403): {trimmed}")
             };
-            format!(
-                "Toggl rejected the API token.{detail} Paste only the personal API Token from Toggl Track → Profile Settings (bottom of the page). Do not add \":api_token\" — Tempus adds that automatically."
-            )
+            if trimmed.to_ascii_lowercase().contains("username")
+                || trimmed.to_ascii_lowercase().contains("password")
+                || trimmed.to_ascii_lowercase().contains("api token")
+            {
+                format!(
+                    "{detail} Paste only the personal API Token from Toggl Track → Profile Settings (bottom of the page). Do not add \":api_token\" — Tempus adds that automatically."
+                )
+            } else {
+                detail
+            }
         }
         429 => "Toggl rate limit reached. Try again in a minute.".into(),
         402 => "Toggl API quota exceeded. Try again later.".into(),
@@ -332,6 +362,30 @@ mod tests {
             header,
             "Basic MTk3MTgwMGQ0ZDgyODYxZDhmMmMxNjUxZmVhNGQyMTI6YXBpX3Rva2Vu"
         );
+    }
+
+    #[test]
+    fn test_parse_toggl_project_url_and_id() {
+        let parsed =
+            parse_toggl_project_ref("https://track.toggl.com/21598401/projects/221432394/tasks");
+        assert_eq!(parsed.workspace_id, Some(21598401));
+        assert_eq!(parsed.project_id, Some(221432394));
+        assert!(parsed.name.is_none());
+
+        let parsed = parse_toggl_project_ref("221432394");
+        assert_eq!(parsed.project_id, Some(221432394));
+        assert!(parsed.workspace_id.is_none());
+
+        let parsed = parse_toggl_project_ref("FCR → Manutenção App");
+        assert_eq!(parsed.name.as_deref(), Some("FCR → Manutenção App"));
+        assert!(parsed.project_id.is_none());
+    }
+
+    #[test]
+    fn test_permission_error_is_not_reported_as_bad_token() {
+        let message = map_toggl_error(403, "Only admins may create projects in this workspace.");
+        assert!(message.contains("Only admins may create projects"));
+        assert!(!message.contains("rejected the API token"));
     }
 
     #[test]
