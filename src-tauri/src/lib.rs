@@ -1,8 +1,9 @@
 mod commands;
 mod db;
 mod models;
+mod toggl;
 
-use crate::commands::{entries, export as export_mod, projects, settings};
+use crate::commands::{entries, export as export_mod, projects, settings, toggl as toggl_mod};
 use db::Database;
 use std::collections::HashMap;
 use tauri::{
@@ -111,6 +112,11 @@ fn update_settings_db(
 #[tauri::command]
 fn export_markdown(db: State<Database>, path: String) -> Result<(), String> {
     export_mod::export_markdown_impl(&db, &path)
+}
+
+#[tauri::command]
+fn sync_toggl(db: State<Database>) -> Result<toggl_mod::TogglSyncResult, String> {
+    toggl_mod::sync_toggl_impl(&db)
 }
 
 #[tauri::command]
@@ -323,6 +329,7 @@ pub fn run() {
             get_settings_db,
             update_settings_db,
             export_markdown,
+            sync_toggl,
             pick_export_folder,
             set_always_on_top,
             set_window_position,

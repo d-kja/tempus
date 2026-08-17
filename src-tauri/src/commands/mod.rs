@@ -1,5 +1,6 @@
 pub mod entries;
+pub mod export;
 pub mod projects;
 pub mod settings;
-pub mod export;
+pub mod toggl;
 pub mod window;
