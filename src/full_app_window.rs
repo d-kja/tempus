@@ -19,6 +19,8 @@ pub fn FullAppWindow() -> Element {
     let mut timer_state = use_signal(|| TimerState::Idle);
     let mut project_name = use_signal(String::new);
     let mut export_path = use_signal(String::new);
+    let mut toggl_token = use_signal(String::new);
+    let mut syncing = use_signal(|| false);
     let mut status = use_signal(String::new);
     let mut filter_project = use_signal(|| None::<i64>);
     let mut interval_handle = use_signal(|| Option::<Interval>::None);
@@ -42,6 +44,7 @@ pub fn FullAppWindow() -> Element {
             if let Ok(s) = bridge::get_settings().await {
                 let path = s.get("export_path").cloned().unwrap_or_default();
                 export_path.set(path);
+                toggl_token.set(s.get("toggl_api_token").cloned().unwrap_or_default());
                 settings_sig.set(s);
             }
         });
@@ -153,6 +156,40 @@ pub fn FullAppWindow() -> Element {
                 Ok(_) => status.set("Exported to timesheet.md".into()),
                 Err(e) => status.set(format!("Export error: {}", e)),
             }
+        });
+    };
+
+    let on_sync_toggl = move |_| {
+        if *syncing.read() {
+            return;
+        }
+        syncing.set(true);
+        status.set("Syncing with Toggl...".into());
+        spawn(async move {
+            match bridge::sync_toggl().await {
+                Ok(result) => {
+                    if result.created == 0 {
+                        status.set("Nothing new to sync.".into());
+                    } else if result.created == 1 {
+                        status.set("Synced 1 entry to Toggl.".into());
+                    } else {
+                        status.set(format!("Synced {} entries to Toggl.", result.created));
+                    }
+                }
+                Err(e) => status.set(format!("Toggl sync error: {}", e)),
+            }
+            syncing.set(false);
+        });
+    };
+
+    let on_toggl_token = move |e: Event<FormData>| {
+        let token = e.value();
+        toggl_token.set(token.clone());
+        let mut s = settings_sig.read().clone();
+        s.insert("toggl_api_token".into(), token);
+        settings_sig.set(s.clone());
+        spawn(async move {
+            let _ = bridge::update_settings(s).await;
         });
     };
 
@@ -324,6 +361,16 @@ pub fn FullAppWindow() -> Element {
                             }
                             button {
                                 class: "btn btn-primary",
+                                onclick: on_sync_toggl,
+                                disabled: toggl_token.read().trim().is_empty() || *syncing.read(),
+                                if *syncing.read() {
+                                    "Syncing..."
+                                } else {
+                                    "Sync to Toggl"
+                                }
+                            }
+                            button {
+                                class: "btn btn-primary",
                                 onclick: on_export,
                                 disabled: export_path.read().is_empty(),
                                 "Export Markdown"
@@ -349,6 +396,20 @@ pub fn FullAppWindow() -> Element {
                                 }
                             }
                             p { class: "helper-text", "Keep the timer visible above all other windows." }
+                        }
+                        section { class: "section",
+                            h3 { class: "section-label", "Toggl" }
+                            input {
+                                class: "input input-mono",
+                                r#type: "password",
+                                placeholder: "API token",
+                                value: "{toggl_token}",
+                                autocomplete: "off",
+                                oninput: on_toggl_token
+                            }
+                            p { class: "helper-text",
+                                "Find this in Toggl under Profile Settings → API Token."
+                            }
                         }
                         div { class: "page-filler" }
                     }
