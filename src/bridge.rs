@@ -49,10 +49,18 @@ fn from_value<T: for<'de> Deserialize<'de>>(val: JsValue) -> Result<T, String> {
 
 fn js_error_to_string(err: JsValue) -> String {
     if let Some(message) = err.as_string() {
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&message) {
+            if let Some(message) = value.get("message").and_then(|item| item.as_str()) {
+                return message.to_string();
+            }
+        }
         return message;
     }
     if let Ok(value) = serde_wasm_bindgen::from_value::<serde_json::Value>(err) {
         if let Some(message) = value.get("message").and_then(|item| item.as_str()) {
+            return message.to_string();
+        }
+        if let Some(message) = value.get("error").and_then(|item| item.as_str()) {
             return message.to_string();
         }
         return value.to_string();
@@ -187,8 +195,8 @@ pub struct TogglSyncResult {
     pub projects_created: u32,
 }
 
-pub async fn sync_toggl() -> Result<TogglSyncResult, String> {
-    let args = serde_wasm_bindgen::to_value(&()).unwrap();
+pub async fn sync_toggl(api_token: String) -> Result<TogglSyncResult, String> {
+    let args = serde_wasm_bindgen::to_value(&serde_json::json!({ "apiToken": api_token })).unwrap();
     match invoke_fallible("sync_toggl", args).await {
         Ok(val) => from_value(val),
         Err(err) => Err(js_error_to_string(err)),
