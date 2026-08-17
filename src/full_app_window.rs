@@ -165,8 +165,9 @@ pub fn FullAppWindow() -> Element {
         }
         syncing.set(true);
         status.set("Syncing with Toggl...".into());
+        let token = toggl_token.read().clone();
         spawn(async move {
-            match bridge::sync_toggl().await {
+            match bridge::sync_toggl(token).await {
                 Ok(result) => {
                     if result.created == 0 {
                         status.set("Nothing new to sync.".into());
@@ -408,7 +409,7 @@ pub fn FullAppWindow() -> Element {
                                 oninput: on_toggl_token
                             }
                             p { class: "helper-text",
-                                "Find this in Toggl under Profile Settings → API Token."
+                                "Personal API Token from Toggl Track → Profile Settings (bottom of the page). Paste the token only — Tempus adds :api_token for you."
                             }
                         }
                         div { class: "page-filler" }

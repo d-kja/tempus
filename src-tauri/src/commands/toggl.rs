@@ -1,11 +1,12 @@
-use crate::commands::settings::get_settings_impl;
+use crate::commands::settings::{get_settings_impl, update_settings_impl};
 use crate::db::Database;
 use crate::toggl::{
-    duration_secs, sql_datetime_to_rfc3339, toggl_description, NewTimeEntry, TogglApi, TogglClient,
-    TogglProject,
+    duration_secs, normalize_api_token, sql_datetime_to_rfc3339, toggl_description, NewTimeEntry,
+    TogglApi, TogglClient, TogglProject,
 };
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TogglSyncResult {
@@ -29,15 +30,23 @@ struct LocalProject {
     toggl_id: Option<i64>,
 }
 
-pub fn sync_toggl_impl(db: &Database) -> Result<TogglSyncResult, String> {
+pub fn sync_toggl_impl(
+    db: &Database,
+    api_token: Option<String>,
+) -> Result<TogglSyncResult, String> {
     let settings = get_settings_impl(db)?;
-    let token = settings
-        .get("toggl_api_token")
-        .map(|value| value.trim().to_string())
+    let raw = api_token
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| settings.get("toggl_api_token").cloned())
         .unwrap_or_default();
+    let token = normalize_api_token(&raw);
     if token.is_empty() {
         return Err("Add your Toggl API token in Settings first.".into());
     }
+
+    let mut persisted = HashMap::new();
+    persisted.insert("toggl_api_token".into(), token.clone());
+    update_settings_impl(db, &persisted)?;
 
     let client = TogglClient::new(token)?;
     sync_with_api(db, &client)
@@ -308,7 +317,7 @@ mod tests {
     #[test]
     fn test_sync_requires_api_token() {
         let db = setup_db();
-        let error = sync_toggl_impl(&db).unwrap_err();
+        let error = sync_toggl_impl(&db, None).unwrap_err();
         assert!(error.contains("API token"));
     }
 

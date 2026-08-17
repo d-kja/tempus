@@ -48,14 +48,16 @@ pub struct TogglClient {
 
 impl TogglClient {
     pub fn new(api_token: impl Into<String>) -> Result<Self, String> {
+        let api_token = normalize_api_token(&api_token.into());
+        if api_token.is_empty() {
+            return Err("Add your Toggl API token in Settings first.".into());
+        }
         let agent = ureq::AgentBuilder::new()
             .timeout(Duration::from_secs(30))
             .user_agent("tempus/0.1")
+            .redirects(0)
             .build();
-        Ok(Self {
-            agent,
-            api_token: api_token.into(),
-        })
+        Ok(Self { agent, api_token })
     }
 
     fn request(
@@ -107,8 +109,12 @@ impl TogglApi for TogglClient {
         let body = self.request("GET", "/me", None)?;
         let parsed: MeResponse =
             serde_json::from_str(&body).map_err(|e| format!("invalid Toggl /me response: {e}"))?;
+        let default_workspace_id = match parsed.default_workspace_id {
+            Some(id) if id > 0 => id,
+            _ => self.first_workspace_id()?,
+        };
         Ok(TogglUser {
-            default_workspace_id: parsed.default_workspace_id,
+            default_workspace_id,
         })
     }
 
@@ -162,9 +168,28 @@ impl TogglApi for TogglClient {
     }
 }
 
+impl TogglClient {
+    fn first_workspace_id(&self) -> Result<i64, String> {
+        let body = self.request("GET", "/me/workspaces", None)?;
+        let parsed: Vec<WorkspaceResponse> = serde_json::from_str(&body)
+            .map_err(|e| format!("invalid Toggl workspaces response: {e}"))?;
+        parsed
+            .into_iter()
+            .map(|workspace| workspace.id)
+            .find(|id| *id > 0)
+            .ok_or_else(|| "Toggl account has no workspace.".into())
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct MeResponse {
-    default_workspace_id: i64,
+    #[serde(default)]
+    default_workspace_id: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WorkspaceResponse {
+    id: i64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -178,6 +203,24 @@ struct ProjectResponse {
 #[derive(Debug, Deserialize)]
 struct TimeEntryResponse {
     id: i64,
+}
+
+pub fn normalize_api_token(raw: &str) -> String {
+    let mut token = raw.trim().trim_matches('"').trim_matches('\'').to_string();
+    if token
+        .get(..7)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("bearer "))
+    {
+        token = token[7..].trim().to_string();
+    }
+    if token
+        .get(token.len().saturating_sub(10)..)
+        .is_some_and(|suffix| suffix.eq_ignore_ascii_case(":api_token"))
+    {
+        token.truncate(token.len() - 10);
+    }
+    token.retain(|c| !c.is_whitespace());
+    token
 }
 
 pub fn toggl_description(title: &str, description: Option<&str>) -> String {
@@ -237,7 +280,20 @@ fn basic_auth_header(token: &str) -> String {
 fn map_toggl_error(status: u16, body: &str) -> String {
     let trimmed = body.trim().trim_matches('"');
     match status {
-        401 | 403 => "Invalid Toggl API token.".into(),
+        401 => {
+            "Toggl did not receive credentials (401). Re-save the token in Settings and try again."
+                .into()
+        }
+        403 => {
+            let detail = if trimmed.is_empty() {
+                String::new()
+            } else {
+                format!(" Toggl said: {trimmed}.")
+            };
+            format!(
+                "Toggl rejected the API token.{detail} Paste only the personal API Token from Toggl Track → Profile Settings (bottom of the page). Do not add \":api_token\" — Tempus adds that automatically."
+            )
+        }
         429 => "Toggl rate limit reached. Try again in a minute.".into(),
         402 => "Toggl API quota exceeded. Try again later.".into(),
         _ if trimmed.is_empty() => format!("Toggl API error ({status})."),
@@ -248,6 +304,35 @@ fn map_toggl_error(status: u16, body: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_normalize_api_token_strips_suffix_and_whitespace() {
+        assert_eq!(
+            normalize_api_token("  1971800d4d82861d8f2c1651fea4d212  "),
+            "1971800d4d82861d8f2c1651fea4d212"
+        );
+        assert_eq!(
+            normalize_api_token("1971800d4d82861d8f2c1651fea4d212:api_token"),
+            "1971800d4d82861d8f2c1651fea4d212"
+        );
+        assert_eq!(
+            normalize_api_token("1971800d4d82861d8f2c1651fea4d212:API_TOKEN"),
+            "1971800d4d82861d8f2c1651fea4d212"
+        );
+        assert_eq!(
+            normalize_api_token("1971800d4d82861d8f2c1651fea4d212\n"),
+            "1971800d4d82861d8f2c1651fea4d212"
+        );
+    }
+
+    #[test]
+    fn test_basic_auth_header_uses_api_token_password() {
+        let header = basic_auth_header("1971800d4d82861d8f2c1651fea4d212");
+        assert_eq!(
+            header,
+            "Basic MTk3MTgwMGQ0ZDgyODYxZDhmMmMxNjUxZmVhNGQyMTI6YXBpX3Rva2Vu"
+        );
+    }
 
     #[test]
     fn test_toggl_description_uses_title_and_optional_details() {
